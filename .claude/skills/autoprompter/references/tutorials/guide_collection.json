@@ -1,0 +1,1315 @@
+{
+  "total_guides": 4,
+  "guides_by_complexity": {
+    "intermediate": 2,
+    "advanced": 2
+  },
+  "guides_by_use_case": {
+    "Success Parses Event Array And Object": [
+      {
+        "guide_id": "9619a2b27f30",
+        "title": "Success Parses Event Array And Object",
+        "overview": "Workflow: test success parses event array and object",
+        "complexity_level": "intermediate",
+        "prerequisites": [
+          "Setup code must be executed first"
+        ],
+        "required_imports": [
+          "json",
+          "os",
+          "subprocess",
+          "sys",
+          "unittest.mock",
+          "pytest",
+          "claude_cli_client",
+          "config_manager"
+        ],
+        "required_fixtures": [],
+        "workflows": [
+          {
+            "example_id": "75d9d5cc",
+            "test_name": "test_success_parses_event_array_and_object",
+            "category": "workflow",
+            "code": "client = make_client()\nevents = [{'type': 'system'}, {'type': 'assistant'}, RESULT]\nrun.return_value = proc(json.dumps(events))\nresp = client.query('hi', system_message='be brief')\nassert (resp.success, resp.content, resp.model) == (True, 'OK', 'claude-haiku-4-5-20251001')\nassert resp.usage == {'prompt_tokens': 602, 'completion_tokens': 4, 'total_tokens': 606}\ncmd = run.call_args.args[0]\nassert run.call_args.kwargs['input'] == 'hi'\nassert cmd[cmd.index('--system-prompt') + 1] == 'be brief'\nassert cmd[cmd.index('--model') + 1] == 'haiku'\nassert '--safe-mode' in cmd and cmd[cmd.index('--tools') + 1] == ''\nrun.return_value = proc(json.dumps(RESULT))\nassert client.query('hi').content == 'OK'\nassert run.call_args.args[0][run.call_args.args[0].index('--system-prompt') + 1] == 'You are a helpful assistant.'",
+            "language": "Python",
+            "description": "Workflow: test success parses event array and object",
+            "expected_behavior": "assert run.call_args.args[0][run.call_args.args[0].index('--system-prompt') + 1] == 'You are a helpful assistant.'",
+            "file_path": "~/AutoPrompter/tests/test_claude_cli_client.py",
+            "line_start": 33,
+            "line_end": 48,
+            "complexity_score": 1.0,
+            "confidence": 0.9,
+            "setup_code": "# Fixtures: run",
+            "tags": [
+              "mock",
+              "workflow",
+              "integration"
+            ],
+            "dependencies": [
+              "json",
+              "os",
+              "subprocess",
+              "sys",
+              "unittest.mock",
+              "pytest",
+              "claude_cli_client",
+              "config_manager"
+            ],
+            "ai_analysis": null
+          }
+        ],
+        "steps": [
+          {
+            "step_number": 1,
+            "code": "client = make_client()",
+            "description": "Assign client = make_client(...)",
+            "expected_result": null,
+            "verification": null,
+            "setup_required": null,
+            "explanation": null,
+            "common_pitfall": null,
+            "common_variations": []
+          },
+          {
+            "step_number": 2,
+            "code": "events = [{'type': 'system'}, {'type': 'assistant'}, RESULT]",
+            "description": "Assign events = value",
+            "expected_result": null,
+            "verification": null,
+            "setup_required": null,
+            "explanation": null,
+            "common_pitfall": null,
+            "common_variations": []
+          },
+          {
+            "step_number": 3,
+            "code": "run.return_value = proc(json.dumps(events))",
+            "description": "Assign run.return_value = proc(...)",
+            "expected_result": null,
+            "verification": null,
+            "setup_required": null,
+            "explanation": null,
+            "common_pitfall": null,
+            "common_variations": []
+          },
+          {
+            "step_number": 4,
+            "code": "resp = client.query('hi', system_message='be brief')",
+            "description": "Assign resp = client.query(...)",
+            "expected_result": null,
+            "verification": "assert (resp.success, resp.content, resp.model) == (True, 'OK', 'claude-haiku-4-5-20251001')",
+            "setup_required": null,
+            "explanation": null,
+            "common_pitfall": null,
+            "common_variations": []
+          },
+          {
+            "step_number": 5,
+            "code": "cmd = run.call_args.args[0]",
+            "description": "Assign cmd = value",
+            "expected_result": null,
+            "verification": "assert run.call_args.kwargs['input'] == 'hi'",
+            "setup_required": null,
+            "explanation": null,
+            "common_pitfall": null,
+            "common_variations": []
+          },
+          {
+            "step_number": 6,
+            "code": "run.return_value = proc(json.dumps(RESULT))",
+            "description": "Assign run.return_value = proc(...)",
+            "expected_result": null,
+            "verification": "assert client.query('hi').content == 'OK'",
+            "setup_required": null,
+            "explanation": null,
+            "common_pitfall": null,
+            "common_variations": []
+          }
+        ],
+        "use_case": "Success Parses Event Array And Object",
+        "tags": [
+          "mock",
+          "workflow",
+          "integration"
+        ],
+        "estimated_time": "10 minutes",
+        "source_files": [
+          "test_claude_cli_client.py:33"
+        ],
+        "language": "Python",
+        "common_pitfalls": [],
+        "troubleshooting": {},
+        "variations": [],
+        "related_guides": [],
+        "prerequisites_detailed": [],
+        "troubleshooting_detailed": [],
+        "next_steps_detailed": [],
+        "use_cases": []
+      }
+    ],
+    "Failures Retry Then Recover Or Give Up": [
+      {
+        "guide_id": "16924ffb227b",
+        "title": "Failures Retry Then Recover Or Give Up",
+        "overview": "Workflow: test failures retry then recover or give up",
+        "complexity_level": "advanced",
+        "prerequisites": [
+          "Setup code must be executed first"
+        ],
+        "required_imports": [
+          "json",
+          "os",
+          "subprocess",
+          "sys",
+          "unittest.mock",
+          "pytest",
+          "claude_cli_client",
+          "config_manager"
+        ],
+        "required_fixtures": [],
+        "workflows": [
+          {
+            "example_id": "68fc394e",
+            "test_name": "test_failures_retry_then_recover_or_give_up",
+            "category": "workflow",
+            "code": "client = make_client()\nrun.side_effect = [proc(returncode=1, stderr='boom'), proc(json.dumps(RESULT))]\nassert client.query('hi').success is True and run.call_count == 2\nrun.reset_mock()\nrun.side_effect = None\nrun.return_value = proc(json.dumps({**RESULT, 'is_error': True, 'result': 'rate limited'}))\nresp = client.query('hi')\nassert resp.success is False and 'rate limited' in resp.error and (run.call_count == 3)\nrun.reset_mock()\nrun.side_effect = subprocess.TimeoutExpired(cmd='claude', timeout=1)\nassert 'TimeoutExpired' in client.query('hi').error\nrun.reset_mock()\nrun.side_effect = None\nrun.return_value = proc('not json')\nassert client.query('hi').success is False",
+            "language": "Python",
+            "description": "Workflow: test failures retry then recover or give up",
+            "expected_behavior": "assert client.query('hi').success is False",
+            "file_path": "~/AutoPrompter/tests/test_claude_cli_client.py",
+            "line_start": 53,
+            "line_end": 71,
+            "complexity_score": 1.0,
+            "confidence": 0.9,
+            "setup_code": "# Fixtures: run, _sleep",
+            "tags": [
+              "mock",
+              "workflow",
+              "integration"
+            ],
+            "dependencies": [
+              "json",
+              "os",
+              "subprocess",
+              "sys",
+              "unittest.mock",
+              "pytest",
+              "claude_cli_client",
+              "config_manager"
+            ],
+            "ai_analysis": null
+          }
+        ],
+        "steps": [
+          {
+            "step_number": 1,
+            "code": "client = make_client()",
+            "description": "Assign client = make_client(...)",
+            "expected_result": null,
+            "verification": null,
+            "setup_required": null,
+            "explanation": null,
+            "common_pitfall": null,
+            "common_variations": []
+          },
+          {
+            "step_number": 2,
+            "code": "run.side_effect = [proc(returncode=1, stderr='boom'), proc(json.dumps(RESULT))]",
+            "description": "Assign run.side_effect = value",
+            "expected_result": null,
+            "verification": "assert client.query('hi').success is True and run.call_count == 2",
+            "setup_required": null,
+            "explanation": null,
+            "common_pitfall": null,
+            "common_variations": []
+          },
+          {
+            "step_number": 3,
+            "code": "run.reset_mock()",
+            "description": "Call run.reset_mock()",
+            "expected_result": null,
+            "verification": null,
+            "setup_required": null,
+            "explanation": null,
+            "common_pitfall": null,
+            "common_variations": []
+          },
+          {
+            "step_number": 4,
+            "code": "run.side_effect = None",
+            "description": "Assign run.side_effect = None",
+            "expected_result": null,
+            "verification": null,
+            "setup_required": null,
+            "explanation": null,
+            "common_pitfall": null,
+            "common_variations": []
+          },
+          {
+            "step_number": 5,
+            "code": "run.return_value = proc(json.dumps({**RESULT, 'is_error': True, 'result': 'rate limited'}))",
+            "description": "Assign run.return_value = proc(...)",
+            "expected_result": null,
+            "verification": null,
+            "setup_required": null,
+            "explanation": null,
+            "common_pitfall": null,
+            "common_variations": []
+          },
+          {
+            "step_number": 6,
+            "code": "resp = client.query('hi')",
+            "description": "Assign resp = client.query(...)",
+            "expected_result": null,
+            "verification": "assert resp.success is False and 'rate limited' in resp.error and (run.call_count == 3)",
+            "setup_required": null,
+            "explanation": null,
+            "common_pitfall": null,
+            "common_variations": []
+          },
+          {
+            "step_number": 7,
+            "code": "run.reset_mock()",
+            "description": "Call run.reset_mock()",
+            "expected_result": null,
+            "verification": null,
+            "setup_required": null,
+            "explanation": null,
+            "common_pitfall": null,
+            "common_variations": []
+          },
+          {
+            "step_number": 8,
+            "code": "run.side_effect = subprocess.TimeoutExpired(cmd='claude', timeout=1)",
+            "description": "Assign run.side_effect = subprocess.TimeoutExpired(...)",
+            "expected_result": null,
+            "verification": "assert 'TimeoutExpired' in client.query('hi').error",
+            "setup_required": null,
+            "explanation": null,
+            "common_pitfall": null,
+            "common_variations": []
+          },
+          {
+            "step_number": 9,
+            "code": "run.reset_mock()",
+            "description": "Call run.reset_mock()",
+            "expected_result": null,
+            "verification": null,
+            "setup_required": null,
+            "explanation": null,
+            "common_pitfall": null,
+            "common_variations": []
+          },
+          {
+            "step_number": 10,
+            "code": "run.side_effect = None",
+            "description": "Assign run.side_effect = None",
+            "expected_result": null,
+            "verification": null,
+            "setup_required": null,
+            "explanation": null,
+            "common_pitfall": null,
+            "common_variations": []
+          },
+          {
+            "step_number": 11,
+            "code": "run.return_value = proc('not json')",
+            "description": "Assign run.return_value = proc(...)",
+            "expected_result": null,
+            "verification": "assert client.query('hi').success is False",
+            "setup_required": null,
+            "explanation": null,
+            "common_pitfall": null,
+            "common_variations": []
+          }
+        ],
+        "use_case": "Failures Retry Then Recover Or Give Up",
+        "tags": [
+          "mock",
+          "workflow",
+          "integration"
+        ],
+        "estimated_time": "20 minutes",
+        "source_files": [
+          "test_claude_cli_client.py:53"
+        ],
+        "language": "Python",
+        "common_pitfalls": [],
+        "troubleshooting": {},
+        "variations": [],
+        "related_guides": [],
+        "prerequisites_detailed": [],
+        "troubleshooting_detailed": [],
+        "next_steps_detailed": [],
+        "use_cases": []
+      }
+    ],
+    "Config Routes By Backend And Round Trips": [
+      {
+        "guide_id": "960c50fcabf1",
+        "title": "Config Routes By Backend And Round Trips",
+        "overview": "Workflow: test config routes by backend and round trips",
+        "complexity_level": "advanced",
+        "prerequisites": [
+          "Setup code must be executed first"
+        ],
+        "required_imports": [
+          "json",
+          "os",
+          "subprocess",
+          "sys",
+          "unittest.mock",
+          "pytest",
+          "claude_cli_client",
+          "config_manager"
+        ],
+        "required_fixtures": [],
+        "workflows": [
+          {
+            "example_id": "81535667",
+            "test_name": "test_config_routes_by_backend_and_round_trips",
+            "category": "workflow",
+            "code": "cfg_file = tmp_path / 'c.yaml'\ncfg_file.write_text('optimizer_llm: {backend: claude_cli, model: sonnet}\\ntarget_llm: {model: x, api_key: k}\\n')\ncfg = Config.from_yaml(str(cfg_file))\nassert isinstance(cfg.optimizer_llm, ClaudeCLIConfig) and isinstance(cfg.target_llm, LLMConfig)\ncfg_file.write_text('optimizer_llm: {backend: ollama, model: m}\\ntarget_llm: {backend: claude_cli, model: haiku}\\n')\ncfg = Config.from_yaml(str(cfg_file))\nassert isinstance(cfg.optimizer_llm, LocalLLMConfig) and isinstance(cfg.target_llm, ClaudeCLIConfig)\ncfg_file.write_text('optimizer_llm: {backend: claude_cli, model: sonnet}\\ntarget_llm: {backend: claude_cli, model: haiku}\\n')\ncfg = Config.from_yaml(str(cfg_file))\nout = tmp_path / 'saved.yaml'\ncfg.to_yaml(str(out))\nreloaded = Config.from_yaml(str(out))\nassert isinstance(reloaded.optimizer_llm, ClaudeCLIConfig) and reloaded.target_llm.model == 'haiku'\nassert cfg.validate() == []",
+            "language": "Python",
+            "description": "Workflow: test config routes by backend and round trips",
+            "expected_behavior": "assert cfg.validate() == []",
+            "file_path": "~/AutoPrompter/tests/test_claude_cli_client.py",
+            "line_start": 80,
+            "line_end": 98,
+            "complexity_score": 1.0,
+            "confidence": 0.9,
+            "setup_code": "# Fixtures: tmp_path",
+            "tags": [
+              "workflow",
+              "integration"
+            ],
+            "dependencies": [
+              "json",
+              "os",
+              "subprocess",
+              "sys",
+              "unittest.mock",
+              "pytest",
+              "claude_cli_client",
+              "config_manager"
+            ],
+            "ai_analysis": null
+          }
+        ],
+        "steps": [
+          {
+            "step_number": 1,
+            "code": "cfg_file = tmp_path / 'c.yaml'",
+            "description": "Assign cfg_file = value",
+            "expected_result": null,
+            "verification": null,
+            "setup_required": null,
+            "explanation": null,
+            "common_pitfall": null,
+            "common_variations": []
+          },
+          {
+            "step_number": 2,
+            "code": "cfg_file.write_text('optimizer_llm: {backend: claude_cli, model: sonnet}\\ntarget_llm: {model: x, api_key: k}\\n')",
+            "description": "Call cfg_file.write_text()",
+            "expected_result": null,
+            "verification": null,
+            "setup_required": null,
+            "explanation": null,
+            "common_pitfall": null,
+            "common_variations": []
+          },
+          {
+            "step_number": 3,
+            "code": "cfg = Config.from_yaml(str(cfg_file))",
+            "description": "Assign cfg = Config.from_yaml(...)",
+            "expected_result": null,
+            "verification": "assert isinstance(cfg.optimizer_llm, ClaudeCLIConfig) and isinstance(cfg.target_llm, LLMConfig)",
+            "setup_required": null,
+            "explanation": null,
+            "common_pitfall": null,
+            "common_variations": []
+          },
+          {
+            "step_number": 4,
+            "code": "cfg_file.write_text('optimizer_llm: {backend: ollama, model: m}\\ntarget_llm: {backend: claude_cli, model: haiku}\\n')",
+            "description": "Call cfg_file.write_text()",
+            "expected_result": null,
+            "verification": null,
+            "setup_required": null,
+            "explanation": null,
+            "common_pitfall": null,
+            "common_variations": []
+          },
+          {
+            "step_number": 5,
+            "code": "cfg = Config.from_yaml(str(cfg_file))",
+            "description": "Assign cfg = Config.from_yaml(...)",
+            "expected_result": null,
+            "verification": "assert isinstance(cfg.optimizer_llm, LocalLLMConfig) and isinstance(cfg.target_llm, ClaudeCLIConfig)",
+            "setup_required": null,
+            "explanation": null,
+            "common_pitfall": null,
+            "common_variations": []
+          },
+          {
+            "step_number": 6,
+            "code": "cfg_file.write_text('optimizer_llm: {backend: claude_cli, model: sonnet}\\ntarget_llm: {backend: claude_cli, model: haiku}\\n')",
+            "description": "Call cfg_file.write_text()",
+            "expected_result": null,
+            "verification": null,
+            "setup_required": null,
+            "explanation": null,
+            "common_pitfall": null,
+            "common_variations": []
+          },
+          {
+            "step_number": 7,
+            "code": "cfg = Config.from_yaml(str(cfg_file))",
+            "description": "Assign cfg = Config.from_yaml(...)",
+            "expected_result": null,
+            "verification": null,
+            "setup_required": null,
+            "explanation": null,
+            "common_pitfall": null,
+            "common_variations": []
+          },
+          {
+            "step_number": 8,
+            "code": "out = tmp_path / 'saved.yaml'",
+            "description": "Assign out = value",
+            "expected_result": null,
+            "verification": null,
+            "setup_required": null,
+            "explanation": null,
+            "common_pitfall": null,
+            "common_variations": []
+          },
+          {
+            "step_number": 9,
+            "code": "cfg.to_yaml(str(out))",
+            "description": "Call cfg.to_yaml()",
+            "expected_result": null,
+            "verification": null,
+            "setup_required": null,
+            "explanation": null,
+            "common_pitfall": null,
+            "common_variations": []
+          },
+          {
+            "step_number": 10,
+            "code": "reloaded = Config.from_yaml(str(out))",
+            "description": "Assign reloaded = Config.from_yaml(...)",
+            "expected_result": null,
+            "verification": "assert isinstance(reloaded.optimizer_llm, ClaudeCLIConfig) and reloaded.target_llm.model == 'haiku'",
+            "setup_required": null,
+            "explanation": null,
+            "common_pitfall": null,
+            "common_variations": []
+          }
+        ],
+        "use_case": "Config Routes By Backend And Round Trips",
+        "tags": [
+          "workflow",
+          "integration"
+        ],
+        "estimated_time": "15 minutes",
+        "source_files": [
+          "test_claude_cli_client.py:80"
+        ],
+        "language": "Python",
+        "common_pitfalls": [],
+        "troubleshooting": {},
+        "variations": [],
+        "related_guides": [],
+        "prerequisites_detailed": [],
+        "troubleshooting_detailed": [],
+        "next_steps_detailed": [],
+        "use_cases": []
+      }
+    ],
+    "Run Passes Force Refresh From Flag": [
+      {
+        "guide_id": "e5d13c1a7fde",
+        "title": "Run Passes Force Refresh From Flag",
+        "overview": "Workflow: test run passes force refresh from flag",
+        "complexity_level": "intermediate",
+        "prerequisites": [
+          "Setup code must be executed first"
+        ],
+        "required_imports": [
+          "json",
+          "os",
+          "sys",
+          "types",
+          "unittest.mock",
+          "pytest",
+          "config_manager",
+          "dataset_generator",
+          "optimization_system"
+        ],
+        "required_fixtures": [],
+        "workflows": [
+          {
+            "example_id": "e15c270d",
+            "test_name": "test_run_passes_force_refresh_from_flag",
+            "category": "workflow",
+            "code": "system = PromptOptimizationSystem.__new__(PromptOptimizationSystem)\nsystem.auto_metric = False\nsystem.config = SimpleNamespace(experiment=SimpleNamespace(reuse_dataset=reuse))\ncalls = []\nsystem.generate_dataset = lambda force_refresh=False: calls.append(force_refresh) or []\nassert system.run()['status'] == 'failed'\nassert calls == [expected_force_refresh]",
+            "language": "Python",
+            "description": "Workflow: test run passes force refresh from flag",
+            "expected_behavior": "assert calls == [expected_force_refresh]",
+            "file_path": "~/AutoPrompter/tests/test_reuse_dataset.py",
+            "line_start": 31,
+            "line_end": 38,
+            "complexity_score": 0.7,
+            "confidence": 0.9,
+            "setup_code": "# Fixtures: reuse, expected_force_refresh",
+            "tags": [
+              "pytest",
+              "workflow",
+              "integration"
+            ],
+            "dependencies": [
+              "json",
+              "os",
+              "sys",
+              "types",
+              "unittest.mock",
+              "pytest",
+              "config_manager",
+              "dataset_generator",
+              "optimization_system"
+            ],
+            "ai_analysis": null
+          }
+        ],
+        "steps": [
+          {
+            "step_number": 1,
+            "code": "system = PromptOptimizationSystem.__new__(PromptOptimizationSystem)",
+            "description": "Assign system = PromptOptimizationSystem.__new__(...)",
+            "expected_result": null,
+            "verification": null,
+            "setup_required": null,
+            "explanation": null,
+            "common_pitfall": null,
+            "common_variations": []
+          },
+          {
+            "step_number": 2,
+            "code": "system.auto_metric = False",
+            "description": "Assign system.auto_metric = False",
+            "expected_result": null,
+            "verification": null,
+            "setup_required": null,
+            "explanation": null,
+            "common_pitfall": null,
+            "common_variations": []
+          },
+          {
+            "step_number": 3,
+            "code": "system.config = SimpleNamespace(experiment=SimpleNamespace(reuse_dataset=reuse))",
+            "description": "Assign system.config = SimpleNamespace(...)",
+            "expected_result": null,
+            "verification": null,
+            "setup_required": null,
+            "explanation": null,
+            "common_pitfall": null,
+            "common_variations": []
+          },
+          {
+            "step_number": 4,
+            "code": "calls = []",
+            "description": "Assign calls = value",
+            "expected_result": null,
+            "verification": null,
+            "setup_required": null,
+            "explanation": null,
+            "common_pitfall": null,
+            "common_variations": []
+          },
+          {
+            "step_number": 5,
+            "code": "system.generate_dataset = lambda force_refresh=False: calls.append(force_refresh) or []",
+            "description": "Assign system.generate_dataset = value",
+            "expected_result": null,
+            "verification": "assert system.run()['status'] == 'failed'",
+            "setup_required": null,
+            "explanation": null,
+            "common_pitfall": null,
+            "common_variations": []
+          }
+        ],
+        "use_case": "Run Passes Force Refresh From Flag",
+        "tags": [
+          "pytest",
+          "workflow",
+          "integration"
+        ],
+        "estimated_time": "10 minutes",
+        "source_files": [
+          "test_reuse_dataset.py:31"
+        ],
+        "language": "Python",
+        "common_pitfalls": [],
+        "troubleshooting": {},
+        "variations": [],
+        "related_guides": [],
+        "prerequisites_detailed": [],
+        "troubleshooting_detailed": [],
+        "next_steps_detailed": [],
+        "use_cases": []
+      }
+    ]
+  },
+  "guides": [
+    {
+      "guide_id": "9619a2b27f30",
+      "title": "Success Parses Event Array And Object",
+      "overview": "Workflow: test success parses event array and object",
+      "complexity_level": "intermediate",
+      "prerequisites": [
+        "Setup code must be executed first"
+      ],
+      "required_imports": [
+        "json",
+        "os",
+        "subprocess",
+        "sys",
+        "unittest.mock",
+        "pytest",
+        "claude_cli_client",
+        "config_manager"
+      ],
+      "required_fixtures": [],
+      "workflows": [
+        {
+          "example_id": "75d9d5cc",
+          "test_name": "test_success_parses_event_array_and_object",
+          "category": "workflow",
+          "code": "client = make_client()\nevents = [{'type': 'system'}, {'type': 'assistant'}, RESULT]\nrun.return_value = proc(json.dumps(events))\nresp = client.query('hi', system_message='be brief')\nassert (resp.success, resp.content, resp.model) == (True, 'OK', 'claude-haiku-4-5-20251001')\nassert resp.usage == {'prompt_tokens': 602, 'completion_tokens': 4, 'total_tokens': 606}\ncmd = run.call_args.args[0]\nassert run.call_args.kwargs['input'] == 'hi'\nassert cmd[cmd.index('--system-prompt') + 1] == 'be brief'\nassert cmd[cmd.index('--model') + 1] == 'haiku'\nassert '--safe-mode' in cmd and cmd[cmd.index('--tools') + 1] == ''\nrun.return_value = proc(json.dumps(RESULT))\nassert client.query('hi').content == 'OK'\nassert run.call_args.args[0][run.call_args.args[0].index('--system-prompt') + 1] == 'You are a helpful assistant.'",
+          "language": "Python",
+          "description": "Workflow: test success parses event array and object",
+          "expected_behavior": "assert run.call_args.args[0][run.call_args.args[0].index('--system-prompt') + 1] == 'You are a helpful assistant.'",
+          "file_path": "~/AutoPrompter/tests/test_claude_cli_client.py",
+          "line_start": 33,
+          "line_end": 48,
+          "complexity_score": 1.0,
+          "confidence": 0.9,
+          "setup_code": "# Fixtures: run",
+          "tags": [
+            "mock",
+            "workflow",
+            "integration"
+          ],
+          "dependencies": [
+            "json",
+            "os",
+            "subprocess",
+            "sys",
+            "unittest.mock",
+            "pytest",
+            "claude_cli_client",
+            "config_manager"
+          ],
+          "ai_analysis": null
+        }
+      ],
+      "steps": [
+        {
+          "step_number": 1,
+          "code": "client = make_client()",
+          "description": "Assign client = make_client(...)",
+          "expected_result": null,
+          "verification": null,
+          "setup_required": null,
+          "explanation": null,
+          "common_pitfall": null,
+          "common_variations": []
+        },
+        {
+          "step_number": 2,
+          "code": "events = [{'type': 'system'}, {'type': 'assistant'}, RESULT]",
+          "description": "Assign events = value",
+          "expected_result": null,
+          "verification": null,
+          "setup_required": null,
+          "explanation": null,
+          "common_pitfall": null,
+          "common_variations": []
+        },
+        {
+          "step_number": 3,
+          "code": "run.return_value = proc(json.dumps(events))",
+          "description": "Assign run.return_value = proc(...)",
+          "expected_result": null,
+          "verification": null,
+          "setup_required": null,
+          "explanation": null,
+          "common_pitfall": null,
+          "common_variations": []
+        },
+        {
+          "step_number": 4,
+          "code": "resp = client.query('hi', system_message='be brief')",
+          "description": "Assign resp = client.query(...)",
+          "expected_result": null,
+          "verification": "assert (resp.success, resp.content, resp.model) == (True, 'OK', 'claude-haiku-4-5-20251001')",
+          "setup_required": null,
+          "explanation": null,
+          "common_pitfall": null,
+          "common_variations": []
+        },
+        {
+          "step_number": 5,
+          "code": "cmd = run.call_args.args[0]",
+          "description": "Assign cmd = value",
+          "expected_result": null,
+          "verification": "assert run.call_args.kwargs['input'] == 'hi'",
+          "setup_required": null,
+          "explanation": null,
+          "common_pitfall": null,
+          "common_variations": []
+        },
+        {
+          "step_number": 6,
+          "code": "run.return_value = proc(json.dumps(RESULT))",
+          "description": "Assign run.return_value = proc(...)",
+          "expected_result": null,
+          "verification": "assert client.query('hi').content == 'OK'",
+          "setup_required": null,
+          "explanation": null,
+          "common_pitfall": null,
+          "common_variations": []
+        }
+      ],
+      "use_case": "Success Parses Event Array And Object",
+      "tags": [
+        "mock",
+        "workflow",
+        "integration"
+      ],
+      "estimated_time": "10 minutes",
+      "source_files": [
+        "test_claude_cli_client.py:33"
+      ],
+      "language": "Python",
+      "common_pitfalls": [],
+      "troubleshooting": {},
+      "variations": [],
+      "related_guides": [],
+      "prerequisites_detailed": [],
+      "troubleshooting_detailed": [],
+      "next_steps_detailed": [],
+      "use_cases": []
+    },
+    {
+      "guide_id": "16924ffb227b",
+      "title": "Failures Retry Then Recover Or Give Up",
+      "overview": "Workflow: test failures retry then recover or give up",
+      "complexity_level": "advanced",
+      "prerequisites": [
+        "Setup code must be executed first"
+      ],
+      "required_imports": [
+        "json",
+        "os",
+        "subprocess",
+        "sys",
+        "unittest.mock",
+        "pytest",
+        "claude_cli_client",
+        "config_manager"
+      ],
+      "required_fixtures": [],
+      "workflows": [
+        {
+          "example_id": "68fc394e",
+          "test_name": "test_failures_retry_then_recover_or_give_up",
+          "category": "workflow",
+          "code": "client = make_client()\nrun.side_effect = [proc(returncode=1, stderr='boom'), proc(json.dumps(RESULT))]\nassert client.query('hi').success is True and run.call_count == 2\nrun.reset_mock()\nrun.side_effect = None\nrun.return_value = proc(json.dumps({**RESULT, 'is_error': True, 'result': 'rate limited'}))\nresp = client.query('hi')\nassert resp.success is False and 'rate limited' in resp.error and (run.call_count == 3)\nrun.reset_mock()\nrun.side_effect = subprocess.TimeoutExpired(cmd='claude', timeout=1)\nassert 'TimeoutExpired' in client.query('hi').error\nrun.reset_mock()\nrun.side_effect = None\nrun.return_value = proc('not json')\nassert client.query('hi').success is False",
+          "language": "Python",
+          "description": "Workflow: test failures retry then recover or give up",
+          "expected_behavior": "assert client.query('hi').success is False",
+          "file_path": "~/AutoPrompter/tests/test_claude_cli_client.py",
+          "line_start": 53,
+          "line_end": 71,
+          "complexity_score": 1.0,
+          "confidence": 0.9,
+          "setup_code": "# Fixtures: run, _sleep",
+          "tags": [
+            "mock",
+            "workflow",
+            "integration"
+          ],
+          "dependencies": [
+            "json",
+            "os",
+            "subprocess",
+            "sys",
+            "unittest.mock",
+            "pytest",
+            "claude_cli_client",
+            "config_manager"
+          ],
+          "ai_analysis": null
+        }
+      ],
+      "steps": [
+        {
+          "step_number": 1,
+          "code": "client = make_client()",
+          "description": "Assign client = make_client(...)",
+          "expected_result": null,
+          "verification": null,
+          "setup_required": null,
+          "explanation": null,
+          "common_pitfall": null,
+          "common_variations": []
+        },
+        {
+          "step_number": 2,
+          "code": "run.side_effect = [proc(returncode=1, stderr='boom'), proc(json.dumps(RESULT))]",
+          "description": "Assign run.side_effect = value",
+          "expected_result": null,
+          "verification": "assert client.query('hi').success is True and run.call_count == 2",
+          "setup_required": null,
+          "explanation": null,
+          "common_pitfall": null,
+          "common_variations": []
+        },
+        {
+          "step_number": 3,
+          "code": "run.reset_mock()",
+          "description": "Call run.reset_mock()",
+          "expected_result": null,
+          "verification": null,
+          "setup_required": null,
+          "explanation": null,
+          "common_pitfall": null,
+          "common_variations": []
+        },
+        {
+          "step_number": 4,
+          "code": "run.side_effect = None",
+          "description": "Assign run.side_effect = None",
+          "expected_result": null,
+          "verification": null,
+          "setup_required": null,
+          "explanation": null,
+          "common_pitfall": null,
+          "common_variations": []
+        },
+        {
+          "step_number": 5,
+          "code": "run.return_value = proc(json.dumps({**RESULT, 'is_error': True, 'result': 'rate limited'}))",
+          "description": "Assign run.return_value = proc(...)",
+          "expected_result": null,
+          "verification": null,
+          "setup_required": null,
+          "explanation": null,
+          "common_pitfall": null,
+          "common_variations": []
+        },
+        {
+          "step_number": 6,
+          "code": "resp = client.query('hi')",
+          "description": "Assign resp = client.query(...)",
+          "expected_result": null,
+          "verification": "assert resp.success is False and 'rate limited' in resp.error and (run.call_count == 3)",
+          "setup_required": null,
+          "explanation": null,
+          "common_pitfall": null,
+          "common_variations": []
+        },
+        {
+          "step_number": 7,
+          "code": "run.reset_mock()",
+          "description": "Call run.reset_mock()",
+          "expected_result": null,
+          "verification": null,
+          "setup_required": null,
+          "explanation": null,
+          "common_pitfall": null,
+          "common_variations": []
+        },
+        {
+          "step_number": 8,
+          "code": "run.side_effect = subprocess.TimeoutExpired(cmd='claude', timeout=1)",
+          "description": "Assign run.side_effect = subprocess.TimeoutExpired(...)",
+          "expected_result": null,
+          "verification": "assert 'TimeoutExpired' in client.query('hi').error",
+          "setup_required": null,
+          "explanation": null,
+          "common_pitfall": null,
+          "common_variations": []
+        },
+        {
+          "step_number": 9,
+          "code": "run.reset_mock()",
+          "description": "Call run.reset_mock()",
+          "expected_result": null,
+          "verification": null,
+          "setup_required": null,
+          "explanation": null,
+          "common_pitfall": null,
+          "common_variations": []
+        },
+        {
+          "step_number": 10,
+          "code": "run.side_effect = None",
+          "description": "Assign run.side_effect = None",
+          "expected_result": null,
+          "verification": null,
+          "setup_required": null,
+          "explanation": null,
+          "common_pitfall": null,
+          "common_variations": []
+        },
+        {
+          "step_number": 11,
+          "code": "run.return_value = proc('not json')",
+          "description": "Assign run.return_value = proc(...)",
+          "expected_result": null,
+          "verification": "assert client.query('hi').success is False",
+          "setup_required": null,
+          "explanation": null,
+          "common_pitfall": null,
+          "common_variations": []
+        }
+      ],
+      "use_case": "Failures Retry Then Recover Or Give Up",
+      "tags": [
+        "mock",
+        "workflow",
+        "integration"
+      ],
+      "estimated_time": "20 minutes",
+      "source_files": [
+        "test_claude_cli_client.py:53"
+      ],
+      "language": "Python",
+      "common_pitfalls": [],
+      "troubleshooting": {},
+      "variations": [],
+      "related_guides": [],
+      "prerequisites_detailed": [],
+      "troubleshooting_detailed": [],
+      "next_steps_detailed": [],
+      "use_cases": []
+    },
+    {
+      "guide_id": "960c50fcabf1",
+      "title": "Config Routes By Backend And Round Trips",
+      "overview": "Workflow: test config routes by backend and round trips",
+      "complexity_level": "advanced",
+      "prerequisites": [
+        "Setup code must be executed first"
+      ],
+      "required_imports": [
+        "json",
+        "os",
+        "subprocess",
+        "sys",
+        "unittest.mock",
+        "pytest",
+        "claude_cli_client",
+        "config_manager"
+      ],
+      "required_fixtures": [],
+      "workflows": [
+        {
+          "example_id": "81535667",
+          "test_name": "test_config_routes_by_backend_and_round_trips",
+          "category": "workflow",
+          "code": "cfg_file = tmp_path / 'c.yaml'\ncfg_file.write_text('optimizer_llm: {backend: claude_cli, model: sonnet}\\ntarget_llm: {model: x, api_key: k}\\n')\ncfg = Config.from_yaml(str(cfg_file))\nassert isinstance(cfg.optimizer_llm, ClaudeCLIConfig) and isinstance(cfg.target_llm, LLMConfig)\ncfg_file.write_text('optimizer_llm: {backend: ollama, model: m}\\ntarget_llm: {backend: claude_cli, model: haiku}\\n')\ncfg = Config.from_yaml(str(cfg_file))\nassert isinstance(cfg.optimizer_llm, LocalLLMConfig) and isinstance(cfg.target_llm, ClaudeCLIConfig)\ncfg_file.write_text('optimizer_llm: {backend: claude_cli, model: sonnet}\\ntarget_llm: {backend: claude_cli, model: haiku}\\n')\ncfg = Config.from_yaml(str(cfg_file))\nout = tmp_path / 'saved.yaml'\ncfg.to_yaml(str(out))\nreloaded = Config.from_yaml(str(out))\nassert isinstance(reloaded.optimizer_llm, ClaudeCLIConfig) and reloaded.target_llm.model == 'haiku'\nassert cfg.validate() == []",
+          "language": "Python",
+          "description": "Workflow: test config routes by backend and round trips",
+          "expected_behavior": "assert cfg.validate() == []",
+          "file_path": "~/AutoPrompter/tests/test_claude_cli_client.py",
+          "line_start": 80,
+          "line_end": 98,
+          "complexity_score": 1.0,
+          "confidence": 0.9,
+          "setup_code": "# Fixtures: tmp_path",
+          "tags": [
+            "workflow",
+            "integration"
+          ],
+          "dependencies": [
+            "json",
+            "os",
+            "subprocess",
+            "sys",
+            "unittest.mock",
+            "pytest",
+            "claude_cli_client",
+            "config_manager"
+          ],
+          "ai_analysis": null
+        }
+      ],
+      "steps": [
+        {
+          "step_number": 1,
+          "code": "cfg_file = tmp_path / 'c.yaml'",
+          "description": "Assign cfg_file = value",
+          "expected_result": null,
+          "verification": null,
+          "setup_required": null,
+          "explanation": null,
+          "common_pitfall": null,
+          "common_variations": []
+        },
+        {
+          "step_number": 2,
+          "code": "cfg_file.write_text('optimizer_llm: {backend: claude_cli, model: sonnet}\\ntarget_llm: {model: x, api_key: k}\\n')",
+          "description": "Call cfg_file.write_text()",
+          "expected_result": null,
+          "verification": null,
+          "setup_required": null,
+          "explanation": null,
+          "common_pitfall": null,
+          "common_variations": []
+        },
+        {
+          "step_number": 3,
+          "code": "cfg = Config.from_yaml(str(cfg_file))",
+          "description": "Assign cfg = Config.from_yaml(...)",
+          "expected_result": null,
+          "verification": "assert isinstance(cfg.optimizer_llm, ClaudeCLIConfig) and isinstance(cfg.target_llm, LLMConfig)",
+          "setup_required": null,
+          "explanation": null,
+          "common_pitfall": null,
+          "common_variations": []
+        },
+        {
+          "step_number": 4,
+          "code": "cfg_file.write_text('optimizer_llm: {backend: ollama, model: m}\\ntarget_llm: {backend: claude_cli, model: haiku}\\n')",
+          "description": "Call cfg_file.write_text()",
+          "expected_result": null,
+          "verification": null,
+          "setup_required": null,
+          "explanation": null,
+          "common_pitfall": null,
+          "common_variations": []
+        },
+        {
+          "step_number": 5,
+          "code": "cfg = Config.from_yaml(str(cfg_file))",
+          "description": "Assign cfg = Config.from_yaml(...)",
+          "expected_result": null,
+          "verification": "assert isinstance(cfg.optimizer_llm, LocalLLMConfig) and isinstance(cfg.target_llm, ClaudeCLIConfig)",
+          "setup_required": null,
+          "explanation": null,
+          "common_pitfall": null,
+          "common_variations": []
+        },
+        {
+          "step_number": 6,
+          "code": "cfg_file.write_text('optimizer_llm: {backend: claude_cli, model: sonnet}\\ntarget_llm: {backend: claude_cli, model: haiku}\\n')",
+          "description": "Call cfg_file.write_text()",
+          "expected_result": null,
+          "verification": null,
+          "setup_required": null,
+          "explanation": null,
+          "common_pitfall": null,
+          "common_variations": []
+        },
+        {
+          "step_number": 7,
+          "code": "cfg = Config.from_yaml(str(cfg_file))",
+          "description": "Assign cfg = Config.from_yaml(...)",
+          "expected_result": null,
+          "verification": null,
+          "setup_required": null,
+          "explanation": null,
+          "common_pitfall": null,
+          "common_variations": []
+        },
+        {
+          "step_number": 8,
+          "code": "out = tmp_path / 'saved.yaml'",
+          "description": "Assign out = value",
+          "expected_result": null,
+          "verification": null,
+          "setup_required": null,
+          "explanation": null,
+          "common_pitfall": null,
+          "common_variations": []
+        },
+        {
+          "step_number": 9,
+          "code": "cfg.to_yaml(str(out))",
+          "description": "Call cfg.to_yaml()",
+          "expected_result": null,
+          "verification": null,
+          "setup_required": null,
+          "explanation": null,
+          "common_pitfall": null,
+          "common_variations": []
+        },
+        {
+          "step_number": 10,
+          "code": "reloaded = Config.from_yaml(str(out))",
+          "description": "Assign reloaded = Config.from_yaml(...)",
+          "expected_result": null,
+          "verification": "assert isinstance(reloaded.optimizer_llm, ClaudeCLIConfig) and reloaded.target_llm.model == 'haiku'",
+          "setup_required": null,
+          "explanation": null,
+          "common_pitfall": null,
+          "common_variations": []
+        }
+      ],
+      "use_case": "Config Routes By Backend And Round Trips",
+      "tags": [
+        "workflow",
+        "integration"
+      ],
+      "estimated_time": "15 minutes",
+      "source_files": [
+        "test_claude_cli_client.py:80"
+      ],
+      "language": "Python",
+      "common_pitfalls": [],
+      "troubleshooting": {},
+      "variations": [],
+      "related_guides": [],
+      "prerequisites_detailed": [],
+      "troubleshooting_detailed": [],
+      "next_steps_detailed": [],
+      "use_cases": []
+    },
+    {
+      "guide_id": "e5d13c1a7fde",
+      "title": "Run Passes Force Refresh From Flag",
+      "overview": "Workflow: test run passes force refresh from flag",
+      "complexity_level": "intermediate",
+      "prerequisites": [
+        "Setup code must be executed first"
+      ],
+      "required_imports": [
+        "json",
+        "os",
+        "sys",
+        "types",
+        "unittest.mock",
+        "pytest",
+        "config_manager",
+        "dataset_generator",
+        "optimization_system"
+      ],
+      "required_fixtures": [],
+      "workflows": [
+        {
+          "example_id": "e15c270d",
+          "test_name": "test_run_passes_force_refresh_from_flag",
+          "category": "workflow",
+          "code": "system = PromptOptimizationSystem.__new__(PromptOptimizationSystem)\nsystem.auto_metric = False\nsystem.config = SimpleNamespace(experiment=SimpleNamespace(reuse_dataset=reuse))\ncalls = []\nsystem.generate_dataset = lambda force_refresh=False: calls.append(force_refresh) or []\nassert system.run()['status'] == 'failed'\nassert calls == [expected_force_refresh]",
+          "language": "Python",
+          "description": "Workflow: test run passes force refresh from flag",
+          "expected_behavior": "assert calls == [expected_force_refresh]",
+          "file_path": "~/AutoPrompter/tests/test_reuse_dataset.py",
+          "line_start": 31,
+          "line_end": 38,
+          "complexity_score": 0.7,
+          "confidence": 0.9,
+          "setup_code": "# Fixtures: reuse, expected_force_refresh",
+          "tags": [
+            "pytest",
+            "workflow",
+            "integration"
+          ],
+          "dependencies": [
+            "json",
+            "os",
+            "sys",
+            "types",
+            "unittest.mock",
+            "pytest",
+            "config_manager",
+            "dataset_generator",
+            "optimization_system"
+          ],
+          "ai_analysis": null
+        }
+      ],
+      "steps": [
+        {
+          "step_number": 1,
+          "code": "system = PromptOptimizationSystem.__new__(PromptOptimizationSystem)",
+          "description": "Assign system = PromptOptimizationSystem.__new__(...)",
+          "expected_result": null,
+          "verification": null,
+          "setup_required": null,
+          "explanation": null,
+          "common_pitfall": null,
+          "common_variations": []
+        },
+        {
+          "step_number": 2,
+          "code": "system.auto_metric = False",
+          "description": "Assign system.auto_metric = False",
+          "expected_result": null,
+          "verification": null,
+          "setup_required": null,
+          "explanation": null,
+          "common_pitfall": null,
+          "common_variations": []
+        },
+        {
+          "step_number": 3,
+          "code": "system.config = SimpleNamespace(experiment=SimpleNamespace(reuse_dataset=reuse))",
+          "description": "Assign system.config = SimpleNamespace(...)",
+          "expected_result": null,
+          "verification": null,
+          "setup_required": null,
+          "explanation": null,
+          "common_pitfall": null,
+          "common_variations": []
+        },
+        {
+          "step_number": 4,
+          "code": "calls = []",
+          "description": "Assign calls = value",
+          "expected_result": null,
+          "verification": null,
+          "setup_required": null,
+          "explanation": null,
+          "common_pitfall": null,
+          "common_variations": []
+        },
+        {
+          "step_number": 5,
+          "code": "system.generate_dataset = lambda force_refresh=False: calls.append(force_refresh) or []",
+          "description": "Assign system.generate_dataset = value",
+          "expected_result": null,
+          "verification": "assert system.run()['status'] == 'failed'",
+          "setup_required": null,
+          "explanation": null,
+          "common_pitfall": null,
+          "common_variations": []
+        }
+      ],
+      "use_case": "Run Passes Force Refresh From Flag",
+      "tags": [
+        "pytest",
+        "workflow",
+        "integration"
+      ],
+      "estimated_time": "10 minutes",
+      "source_files": [
+        "test_reuse_dataset.py:31"
+      ],
+      "language": "Python",
+      "common_pitfalls": [],
+      "troubleshooting": {},
+      "variations": [],
+      "related_guides": [],
+      "prerequisites_detailed": [],
+      "troubleshooting_detailed": [],
+      "next_steps_detailed": [],
+      "use_cases": []
+    }
+  ]
+}

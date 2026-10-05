@@ -1,0 +1,798 @@
+{
+  "total_examples": 27,
+  "examples_by_category": {
+    "workflow": 4,
+    "instantiation": 20,
+    "method_call": 3
+  },
+  "examples_by_language": {
+    "Python": 27
+  },
+  "avg_complexity": 0.31,
+  "high_value_count": 27,
+  "file_path": null,
+  "directory": "~/AutoPrompter",
+  "examples": [
+    {
+      "example_id": "75d9d5cc",
+      "test_name": "test_success_parses_event_array_and_object",
+      "category": "workflow",
+      "code": "client = make_client()\nevents = [{'type': 'system'}, {'type': 'assistant'}, RESULT]\nrun.return_value = proc(json.dumps(events))\nresp = client.query('hi', system_message='be brief')\nassert (resp.success, resp.content, resp.model) == (True, 'OK', 'claude-haiku-4-5-20251001')\nassert resp.usage == {'prompt_tokens': 602, 'completion_tokens': 4, 'total_tokens': 606}\ncmd = run.call_args.args[0]\nassert run.call_args.kwargs['input'] == 'hi'\nassert cmd[cmd.index('--system-prompt') + 1] == 'be brief'\nassert cmd[cmd.index('--model') + 1] == 'haiku'\nassert '--safe-mode' in cmd and cmd[cmd.index('--tools') + 1] == ''\nrun.return_value = proc(json.dumps(RESULT))\nassert client.query('hi').content == 'OK'\nassert run.call_args.args[0][run.call_args.args[0].index('--system-prompt') + 1] == 'You are a helpful assistant.'",
+      "language": "Python",
+      "description": "Workflow: test success parses event array and object",
+      "expected_behavior": "assert run.call_args.args[0][run.call_args.args[0].index('--system-prompt') + 1] == 'You are a helpful assistant.'",
+      "file_path": "~/AutoPrompter/tests/test_claude_cli_client.py",
+      "line_start": 33,
+      "line_end": 48,
+      "complexity_score": 1.0,
+      "confidence": 0.9,
+      "setup_code": "# Fixtures: run",
+      "tags": [
+        "mock",
+        "workflow",
+        "integration"
+      ],
+      "dependencies": [
+        "json",
+        "os",
+        "subprocess",
+        "sys",
+        "unittest.mock",
+        "pytest",
+        "claude_cli_client",
+        "config_manager"
+      ],
+      "ai_analysis": null
+    },
+    {
+      "example_id": "68fc394e",
+      "test_name": "test_failures_retry_then_recover_or_give_up",
+      "category": "workflow",
+      "code": "client = make_client()\nrun.side_effect = [proc(returncode=1, stderr='boom'), proc(json.dumps(RESULT))]\nassert client.query('hi').success is True and run.call_count == 2\nrun.reset_mock()\nrun.side_effect = None\nrun.return_value = proc(json.dumps({**RESULT, 'is_error': True, 'result': 'rate limited'}))\nresp = client.query('hi')\nassert resp.success is False and 'rate limited' in resp.error and (run.call_count == 3)\nrun.reset_mock()\nrun.side_effect = subprocess.TimeoutExpired(cmd='claude', timeout=1)\nassert 'TimeoutExpired' in client.query('hi').error\nrun.reset_mock()\nrun.side_effect = None\nrun.return_value = proc('not json')\nassert client.query('hi').success is False",
+      "language": "Python",
+      "description": "Workflow: test failures retry then recover or give up",
+      "expected_behavior": "assert client.query('hi').success is False",
+      "file_path": "~/AutoPrompter/tests/test_claude_cli_client.py",
+      "line_start": 53,
+      "line_end": 71,
+      "complexity_score": 1.0,
+      "confidence": 0.9,
+      "setup_code": "# Fixtures: run, _sleep",
+      "tags": [
+        "mock",
+        "workflow",
+        "integration"
+      ],
+      "dependencies": [
+        "json",
+        "os",
+        "subprocess",
+        "sys",
+        "unittest.mock",
+        "pytest",
+        "claude_cli_client",
+        "config_manager"
+      ],
+      "ai_analysis": null
+    },
+    {
+      "example_id": "81535667",
+      "test_name": "test_config_routes_by_backend_and_round_trips",
+      "category": "workflow",
+      "code": "cfg_file = tmp_path / 'c.yaml'\ncfg_file.write_text('optimizer_llm: {backend: claude_cli, model: sonnet}\\ntarget_llm: {model: x, api_key: k}\\n')\ncfg = Config.from_yaml(str(cfg_file))\nassert isinstance(cfg.optimizer_llm, ClaudeCLIConfig) and isinstance(cfg.target_llm, LLMConfig)\ncfg_file.write_text('optimizer_llm: {backend: ollama, model: m}\\ntarget_llm: {backend: claude_cli, model: haiku}\\n')\ncfg = Config.from_yaml(str(cfg_file))\nassert isinstance(cfg.optimizer_llm, LocalLLMConfig) and isinstance(cfg.target_llm, ClaudeCLIConfig)\ncfg_file.write_text('optimizer_llm: {backend: claude_cli, model: sonnet}\\ntarget_llm: {backend: claude_cli, model: haiku}\\n')\ncfg = Config.from_yaml(str(cfg_file))\nout = tmp_path / 'saved.yaml'\ncfg.to_yaml(str(out))\nreloaded = Config.from_yaml(str(out))\nassert isinstance(reloaded.optimizer_llm, ClaudeCLIConfig) and reloaded.target_llm.model == 'haiku'\nassert cfg.validate() == []",
+      "language": "Python",
+      "description": "Workflow: test config routes by backend and round trips",
+      "expected_behavior": "assert cfg.validate() == []",
+      "file_path": "~/AutoPrompter/tests/test_claude_cli_client.py",
+      "line_start": 80,
+      "line_end": 98,
+      "complexity_score": 1.0,
+      "confidence": 0.9,
+      "setup_code": "# Fixtures: tmp_path",
+      "tags": [
+        "workflow",
+        "integration"
+      ],
+      "dependencies": [
+        "json",
+        "os",
+        "subprocess",
+        "sys",
+        "unittest.mock",
+        "pytest",
+        "claude_cli_client",
+        "config_manager"
+      ],
+      "ai_analysis": null
+    },
+    {
+      "example_id": "7e916d88",
+      "test_name": "test_success_parses_event_array_and_object",
+      "category": "instantiation",
+      "code": "run.return_value = proc(json.dumps(events))",
+      "language": "Python",
+      "description": "Instantiate proc: test success parses event array and object",
+      "expected_behavior": "assert (resp.success, resp.content, resp.model) == (True, 'OK', 'claude-haiku-4-5-20251001')",
+      "file_path": "~/AutoPrompter/tests/test_claude_cli_client.py",
+      "line_start": 36,
+      "line_end": 36,
+      "complexity_score": 0.15,
+      "confidence": 0.8,
+      "setup_code": "# Fixtures: run",
+      "tags": [
+        "mock"
+      ],
+      "dependencies": [
+        "json",
+        "os",
+        "subprocess",
+        "sys",
+        "unittest.mock",
+        "pytest",
+        "claude_cli_client",
+        "config_manager"
+      ],
+      "ai_analysis": null
+    },
+    {
+      "example_id": "c6e6017b",
+      "test_name": "test_success_parses_event_array_and_object",
+      "category": "instantiation",
+      "code": "resp = client.query('hi', system_message='be brief')",
+      "language": "Python",
+      "description": "Instantiate query: test success parses event array and object",
+      "expected_behavior": "assert (resp.success, resp.content, resp.model) == (True, 'OK', 'claude-haiku-4-5-20251001')",
+      "file_path": "~/AutoPrompter/tests/test_claude_cli_client.py",
+      "line_start": 37,
+      "line_end": 37,
+      "complexity_score": 0.2,
+      "confidence": 0.8,
+      "setup_code": "# Fixtures: run",
+      "tags": [
+        "mock"
+      ],
+      "dependencies": [
+        "json",
+        "os",
+        "subprocess",
+        "sys",
+        "unittest.mock",
+        "pytest",
+        "claude_cli_client",
+        "config_manager"
+      ],
+      "ai_analysis": null
+    },
+    {
+      "example_id": "d61172e1",
+      "test_name": "test_success_parses_event_array_and_object",
+      "category": "instantiation",
+      "code": "run.return_value = proc(json.dumps(RESULT))",
+      "language": "Python",
+      "description": "Instantiate proc: test success parses event array and object",
+      "expected_behavior": "assert client.query('hi').content == 'OK'",
+      "file_path": "~/AutoPrompter/tests/test_claude_cli_client.py",
+      "line_start": 46,
+      "line_end": 46,
+      "complexity_score": 0.15,
+      "confidence": 0.8,
+      "setup_code": "# Fixtures: run",
+      "tags": [
+        "mock"
+      ],
+      "dependencies": [
+        "json",
+        "os",
+        "subprocess",
+        "sys",
+        "unittest.mock",
+        "pytest",
+        "claude_cli_client",
+        "config_manager"
+      ],
+      "ai_analysis": null
+    },
+    {
+      "example_id": "19f92966",
+      "test_name": "test_failures_retry_then_recover_or_give_up",
+      "category": "instantiation",
+      "code": "run.return_value = proc(json.dumps({**RESULT, 'is_error': True, 'result': 'rate limited'}))",
+      "language": "Python",
+      "description": "Instantiate proc: test failures retry then recover or give up",
+      "expected_behavior": "assert resp.success is False and 'rate limited' in resp.error and (run.call_count == 3)",
+      "file_path": "~/AutoPrompter/tests/test_claude_cli_client.py",
+      "line_start": 60,
+      "line_end": 60,
+      "complexity_score": 0.25,
+      "confidence": 0.8,
+      "setup_code": "# Fixtures: run, _sleep",
+      "tags": [
+        "mock"
+      ],
+      "dependencies": [
+        "json",
+        "os",
+        "subprocess",
+        "sys",
+        "unittest.mock",
+        "pytest",
+        "claude_cli_client",
+        "config_manager"
+      ],
+      "ai_analysis": null
+    },
+    {
+      "example_id": "595b905d",
+      "test_name": "test_failures_retry_then_recover_or_give_up",
+      "category": "instantiation",
+      "code": "resp = client.query('hi')",
+      "language": "Python",
+      "description": "Instantiate query: test failures retry then recover or give up",
+      "expected_behavior": "assert resp.success is False and 'rate limited' in resp.error and (run.call_count == 3)",
+      "file_path": "~/AutoPrompter/tests/test_claude_cli_client.py",
+      "line_start": 61,
+      "line_end": 61,
+      "complexity_score": 0.15,
+      "confidence": 0.8,
+      "setup_code": "# Fixtures: run, _sleep",
+      "tags": [
+        "mock"
+      ],
+      "dependencies": [
+        "json",
+        "os",
+        "subprocess",
+        "sys",
+        "unittest.mock",
+        "pytest",
+        "claude_cli_client",
+        "config_manager"
+      ],
+      "ai_analysis": null
+    },
+    {
+      "example_id": "1088d054",
+      "test_name": "test_failures_retry_then_recover_or_give_up",
+      "category": "instantiation",
+      "code": "run.side_effect = subprocess.TimeoutExpired(cmd='claude', timeout=1)",
+      "language": "Python",
+      "description": "Instantiate TimeoutExpired: test failures retry then recover or give up",
+      "expected_behavior": "assert 'TimeoutExpired' in client.query('hi').error",
+      "file_path": "~/AutoPrompter/tests/test_claude_cli_client.py",
+      "line_start": 65,
+      "line_end": 65,
+      "complexity_score": 0.2,
+      "confidence": 0.8,
+      "setup_code": "# Fixtures: run, _sleep",
+      "tags": [
+        "mock"
+      ],
+      "dependencies": [
+        "json",
+        "os",
+        "subprocess",
+        "sys",
+        "unittest.mock",
+        "pytest",
+        "claude_cli_client",
+        "config_manager"
+      ],
+      "ai_analysis": null
+    },
+    {
+      "example_id": "96e99598",
+      "test_name": "test_failures_retry_then_recover_or_give_up",
+      "category": "instantiation",
+      "code": "run.return_value = proc('not json')",
+      "language": "Python",
+      "description": "Instantiate proc: test failures retry then recover or give up",
+      "expected_behavior": "assert client.query('hi').success is False",
+      "file_path": "~/AutoPrompter/tests/test_claude_cli_client.py",
+      "line_start": 70,
+      "line_end": 70,
+      "complexity_score": 0.15,
+      "confidence": 0.8,
+      "setup_code": "# Fixtures: run, _sleep",
+      "tags": [
+        "mock"
+      ],
+      "dependencies": [
+        "json",
+        "os",
+        "subprocess",
+        "sys",
+        "unittest.mock",
+        "pytest",
+        "claude_cli_client",
+        "config_manager"
+      ],
+      "ai_analysis": null
+    },
+    {
+      "example_id": "9067b720",
+      "test_name": "test_connection_check",
+      "category": "method_call",
+      "code": "print(f'\u2713 Connection check completed (connected: {is_connected})')\nprint(f'  (Expected False since no Ollama server is running)')",
+      "language": "Python",
+      "description": "Test connection check method (should fail gracefully without server).",
+      "expected_behavior": "print(f'  (Expected False since no Ollama server is running)')",
+      "file_path": "~/AutoPrompter/tests/test_integration.py",
+      "line_start": 232,
+      "line_end": 233,
+      "complexity_score": 0.25,
+      "confidence": 0.85,
+      "setup_code": null,
+      "tags": [],
+      "dependencies": [
+        "sys",
+        "os",
+        "unittest.mock",
+        "json",
+        "src.local_llm_client",
+        "src.config_manager",
+        "traceback"
+      ],
+      "ai_analysis": null
+    },
+    {
+      "example_id": "fc92adcb",
+      "test_name": "test_list_models",
+      "category": "method_call",
+      "code": "print(f'\u2713 List models completed (models: {models})')\nprint(f'  (Expected empty list since no Ollama server is running)')",
+      "language": "Python",
+      "description": "Test list models method (should fail gracefully without server).",
+      "expected_behavior": "print(f'  (Expected empty list since no Ollama server is running)')",
+      "file_path": "~/AutoPrompter/tests/test_integration.py",
+      "line_start": 251,
+      "line_end": 252,
+      "complexity_score": 0.25,
+      "confidence": 0.85,
+      "setup_code": null,
+      "tags": [],
+      "dependencies": [
+        "sys",
+        "os",
+        "unittest.mock",
+        "json",
+        "src.local_llm_client",
+        "src.config_manager",
+        "traceback"
+      ],
+      "ai_analysis": null
+    },
+    {
+      "example_id": "d5c93a52",
+      "test_name": "test_ollama_client_query",
+      "category": "instantiation",
+      "code": "config = LocalLLMConfig(backend='ollama', model='llama3.2', host='http://localhost', port=11434)",
+      "language": "Python",
+      "description": "Instantiate LocalLLMConfig: Test Ollama client with mocked response.",
+      "expected_behavior": "",
+      "file_path": "~/AutoPrompter/tests/test_integration.py",
+      "line_start": 20,
+      "line_end": 25,
+      "complexity_score": 0.3,
+      "confidence": 0.8,
+      "setup_code": null,
+      "tags": [
+        "mock"
+      ],
+      "dependencies": [
+        "sys",
+        "os",
+        "unittest.mock",
+        "json",
+        "src.local_llm_client",
+        "src.config_manager",
+        "traceback"
+      ],
+      "ai_analysis": null
+    },
+    {
+      "example_id": "e93b1029",
+      "test_name": "test_ollama_client_query",
+      "category": "instantiation",
+      "code": "client = LocalLLMClient(config)",
+      "language": "Python",
+      "description": "Instantiate LocalLLMClient: Test Ollama client with mocked response.",
+      "expected_behavior": "",
+      "file_path": "~/AutoPrompter/tests/test_integration.py",
+      "line_start": 27,
+      "line_end": 27,
+      "complexity_score": 0.15,
+      "confidence": 0.8,
+      "setup_code": null,
+      "tags": [
+        "mock"
+      ],
+      "dependencies": [
+        "sys",
+        "os",
+        "unittest.mock",
+        "json",
+        "src.local_llm_client",
+        "src.config_manager",
+        "traceback"
+      ],
+      "ai_analysis": null
+    },
+    {
+      "example_id": "a1d2873b",
+      "test_name": "test_ollama_client_query",
+      "category": "instantiation",
+      "code": "response = client.query('Say hello')",
+      "language": "Python",
+      "description": "Instantiate query: Test Ollama client with mocked response.",
+      "expected_behavior": "",
+      "file_path": "~/AutoPrompter/tests/test_integration.py",
+      "line_start": 40,
+      "line_end": 40,
+      "complexity_score": 0.15,
+      "confidence": 0.8,
+      "setup_code": null,
+      "tags": [
+        "mock"
+      ],
+      "dependencies": [
+        "sys",
+        "os",
+        "unittest.mock",
+        "json",
+        "src.local_llm_client",
+        "src.config_manager",
+        "traceback"
+      ],
+      "ai_analysis": null
+    },
+    {
+      "example_id": "5aa3a118",
+      "test_name": "test_llama_cpp_client_query",
+      "category": "instantiation",
+      "code": "config = LocalLLMConfig(backend='llama_cpp', model='llama-3.2-3b', host='http://localhost', port=8080)",
+      "language": "Python",
+      "description": "Instantiate LocalLLMConfig: Test llama.cpp client with mocked response.",
+      "expected_behavior": "",
+      "file_path": "~/AutoPrompter/tests/test_integration.py",
+      "line_start": 54,
+      "line_end": 59,
+      "complexity_score": 0.3,
+      "confidence": 0.8,
+      "setup_code": null,
+      "tags": [
+        "mock"
+      ],
+      "dependencies": [
+        "sys",
+        "os",
+        "unittest.mock",
+        "json",
+        "src.local_llm_client",
+        "src.config_manager",
+        "traceback"
+      ],
+      "ai_analysis": null
+    },
+    {
+      "example_id": "e93b1029",
+      "test_name": "test_llama_cpp_client_query",
+      "category": "instantiation",
+      "code": "client = LocalLLMClient(config)",
+      "language": "Python",
+      "description": "Instantiate LocalLLMClient: Test llama.cpp client with mocked response.",
+      "expected_behavior": "",
+      "file_path": "~/AutoPrompter/tests/test_integration.py",
+      "line_start": 61,
+      "line_end": 61,
+      "complexity_score": 0.15,
+      "confidence": 0.8,
+      "setup_code": null,
+      "tags": [
+        "mock"
+      ],
+      "dependencies": [
+        "sys",
+        "os",
+        "unittest.mock",
+        "json",
+        "src.local_llm_client",
+        "src.config_manager",
+        "traceback"
+      ],
+      "ai_analysis": null
+    },
+    {
+      "example_id": "aaf8b7ed",
+      "test_name": "test_llama_cpp_client_query",
+      "category": "instantiation",
+      "code": "response = client.query('Test prompt')",
+      "language": "Python",
+      "description": "Instantiate query: Test llama.cpp client with mocked response.",
+      "expected_behavior": "",
+      "file_path": "~/AutoPrompter/tests/test_integration.py",
+      "line_start": 84,
+      "line_end": 84,
+      "complexity_score": 0.15,
+      "confidence": 0.8,
+      "setup_code": null,
+      "tags": [
+        "mock"
+      ],
+      "dependencies": [
+        "sys",
+        "os",
+        "unittest.mock",
+        "json",
+        "src.local_llm_client",
+        "src.config_manager",
+        "traceback"
+      ],
+      "ai_analysis": null
+    },
+    {
+      "example_id": "d5c93a52",
+      "test_name": "test_query_with_history",
+      "category": "instantiation",
+      "code": "config = LocalLLMConfig(backend='ollama', model='llama3.2', host='http://localhost', port=11434)",
+      "language": "Python",
+      "description": "Instantiate LocalLLMConfig: Test conversation with history.",
+      "expected_behavior": "",
+      "file_path": "~/AutoPrompter/tests/test_integration.py",
+      "line_start": 98,
+      "line_end": 103,
+      "complexity_score": 0.3,
+      "confidence": 0.8,
+      "setup_code": null,
+      "tags": [
+        "mock"
+      ],
+      "dependencies": [
+        "sys",
+        "os",
+        "unittest.mock",
+        "json",
+        "src.local_llm_client",
+        "src.config_manager",
+        "traceback"
+      ],
+      "ai_analysis": null
+    },
+    {
+      "example_id": "e93b1029",
+      "test_name": "test_query_with_history",
+      "category": "instantiation",
+      "code": "client = LocalLLMClient(config)",
+      "language": "Python",
+      "description": "Instantiate LocalLLMClient: Test conversation with history.",
+      "expected_behavior": "",
+      "file_path": "~/AutoPrompter/tests/test_integration.py",
+      "line_start": 105,
+      "line_end": 105,
+      "complexity_score": 0.15,
+      "confidence": 0.8,
+      "setup_code": null,
+      "tags": [
+        "mock"
+      ],
+      "dependencies": [
+        "sys",
+        "os",
+        "unittest.mock",
+        "json",
+        "src.local_llm_client",
+        "src.config_manager",
+        "traceback"
+      ],
+      "ai_analysis": null
+    },
+    {
+      "example_id": "c6bec946",
+      "test_name": "test_flag_defaults_off_and_loads_from_yaml",
+      "category": "method_call",
+      "code": "cfg_file.write_text('optimizer_llm: {backend: claude_cli, model: opus}\\ntarget_llm: {backend: claude_cli, model: haiku}\\nexperiment: {reuse_dataset: true, batch_size: 3}\\n')\nassert Config.from_yaml(str(cfg_file)).experiment.reuse_dataset is True",
+      "language": "Python",
+      "description": "test flag defaults off and loads from yaml",
+      "expected_behavior": "assert Config.from_yaml(str(cfg_file)).experiment.reuse_dataset is True",
+      "file_path": "~/AutoPrompter/tests/test_reuse_dataset.py",
+      "line_start": 24,
+      "line_end": 27,
+      "complexity_score": 0.4,
+      "confidence": 0.85,
+      "setup_code": "# Fixtures: tmp_path",
+      "tags": [],
+      "dependencies": [
+        "json",
+        "os",
+        "sys",
+        "types",
+        "unittest.mock",
+        "pytest",
+        "config_manager",
+        "dataset_generator",
+        "optimization_system"
+      ],
+      "ai_analysis": null
+    },
+    {
+      "example_id": "fb38cc88",
+      "test_name": "test_run_passes_force_refresh_from_flag",
+      "category": "instantiation",
+      "code": "system = PromptOptimizationSystem.__new__(PromptOptimizationSystem)",
+      "language": "Python",
+      "description": "Instantiate __new__: test run passes force refresh from flag",
+      "expected_behavior": "assert system.run()['status'] == 'failed'",
+      "file_path": "~/AutoPrompter/tests/test_reuse_dataset.py",
+      "line_start": 32,
+      "line_end": 32,
+      "complexity_score": 0.15,
+      "confidence": 0.8,
+      "setup_code": "# Fixtures: reuse, expected_force_refresh",
+      "tags": [
+        "pytest"
+      ],
+      "dependencies": [
+        "json",
+        "os",
+        "sys",
+        "types",
+        "unittest.mock",
+        "pytest",
+        "config_manager",
+        "dataset_generator",
+        "optimization_system"
+      ],
+      "ai_analysis": null
+    },
+    {
+      "example_id": "e725c5cc",
+      "test_name": "test_run_passes_force_refresh_from_flag",
+      "category": "instantiation",
+      "code": "system.config = SimpleNamespace(experiment=SimpleNamespace(reuse_dataset=reuse))",
+      "language": "Python",
+      "description": "Instantiate SimpleNamespace: test run passes force refresh from flag",
+      "expected_behavior": "assert system.run()['status'] == 'failed'",
+      "file_path": "~/AutoPrompter/tests/test_reuse_dataset.py",
+      "line_start": 34,
+      "line_end": 34,
+      "complexity_score": 0.15,
+      "confidence": 0.8,
+      "setup_code": "# Fixtures: reuse, expected_force_refresh",
+      "tags": [
+        "pytest"
+      ],
+      "dependencies": [
+        "json",
+        "os",
+        "sys",
+        "types",
+        "unittest.mock",
+        "pytest",
+        "config_manager",
+        "dataset_generator",
+        "optimization_system"
+      ],
+      "ai_analysis": null
+    },
+    {
+      "example_id": "e15c270d",
+      "test_name": "test_run_passes_force_refresh_from_flag",
+      "category": "workflow",
+      "code": "system = PromptOptimizationSystem.__new__(PromptOptimizationSystem)\nsystem.auto_metric = False\nsystem.config = SimpleNamespace(experiment=SimpleNamespace(reuse_dataset=reuse))\ncalls = []\nsystem.generate_dataset = lambda force_refresh=False: calls.append(force_refresh) or []\nassert system.run()['status'] == 'failed'\nassert calls == [expected_force_refresh]",
+      "language": "Python",
+      "description": "Workflow: test run passes force refresh from flag",
+      "expected_behavior": "assert calls == [expected_force_refresh]",
+      "file_path": "~/AutoPrompter/tests/test_reuse_dataset.py",
+      "line_start": 31,
+      "line_end": 38,
+      "complexity_score": 0.7,
+      "confidence": 0.9,
+      "setup_code": "# Fixtures: reuse, expected_force_refresh",
+      "tags": [
+        "pytest",
+        "workflow",
+        "integration"
+      ],
+      "dependencies": [
+        "json",
+        "os",
+        "sys",
+        "types",
+        "unittest.mock",
+        "pytest",
+        "config_manager",
+        "dataset_generator",
+        "optimization_system"
+      ],
+      "ai_analysis": null
+    },
+    {
+      "example_id": "fb38cc88",
+      "test_name": "test_generate_dataset_loads_first_batch_size_entries_without_generating",
+      "category": "instantiation",
+      "code": "system = PromptOptimizationSystem.__new__(PromptOptimizationSystem)",
+      "language": "Python",
+      "description": "Instantiate __new__: test generate dataset loads first batch size entries without generating",
+      "expected_behavior": "assert [e.input for e in entries] == ['q0', 'q1']",
+      "file_path": "~/AutoPrompter/tests/test_reuse_dataset.py",
+      "line_start": 44,
+      "line_end": 44,
+      "complexity_score": 0.15,
+      "confidence": 0.8,
+      "setup_code": "# Fixtures: tmp_path",
+      "tags": [
+        "mock"
+      ],
+      "dependencies": [
+        "json",
+        "os",
+        "sys",
+        "types",
+        "unittest.mock",
+        "pytest",
+        "config_manager",
+        "dataset_generator",
+        "optimization_system"
+      ],
+      "ai_analysis": null
+    },
+    {
+      "example_id": "8d538f2c",
+      "test_name": "test_generate_dataset_loads_first_batch_size_entries_without_generating",
+      "category": "instantiation",
+      "code": "system.config = SimpleNamespace(storage=SimpleNamespace(dataset_file=str(path)), experiment=SimpleNamespace(batch_size=2))",
+      "language": "Python",
+      "description": "Instantiate SimpleNamespace: test generate dataset loads first batch size entries without generating",
+      "expected_behavior": "assert [e.input for e in entries] == ['q0', 'q1']",
+      "file_path": "~/AutoPrompter/tests/test_reuse_dataset.py",
+      "line_start": 45,
+      "line_end": 46,
+      "complexity_score": 0.2,
+      "confidence": 0.8,
+      "setup_code": "# Fixtures: tmp_path",
+      "tags": [
+        "mock"
+      ],
+      "dependencies": [
+        "json",
+        "os",
+        "sys",
+        "types",
+        "unittest.mock",
+        "pytest",
+        "config_manager",
+        "dataset_generator",
+        "optimization_system"
+      ],
+      "ai_analysis": null
+    },
+    {
+      "example_id": "7ccc08c3",
+      "test_name": "test_generate_dataset_loads_first_batch_size_entries_without_generating",
+      "category": "instantiation",
+      "code": "entries = system.generate_dataset(force_refresh=False)",
+      "language": "Python",
+      "description": "Instantiate generate_dataset: test generate dataset loads first batch size entries without generating",
+      "expected_behavior": "assert [e.input for e in entries] == ['q0', 'q1']",
+      "file_path": "~/AutoPrompter/tests/test_reuse_dataset.py",
+      "line_start": 49,
+      "line_end": 49,
+      "complexity_score": 0.15,
+      "confidence": 0.8,
+      "setup_code": "# Fixtures: tmp_path",
+      "tags": [
+        "mock"
+      ],
+      "dependencies": [
+        "json",
+        "os",
+        "sys",
+        "types",
+        "unittest.mock",
+        "pytest",
+        "config_manager",
+        "dataset_generator",
+        "optimization_system"
+      ],
+      "ai_analysis": null
+    }
+  ]
+}

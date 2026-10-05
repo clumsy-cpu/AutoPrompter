@@ -1,0 +1,16 @@
+{
+  "patterns": [],
+  "directory_structure": {
+    "src": 11,
+    "templates": 1,
+    "tests": 4,
+    "static": 2,
+    "css": 1,
+    "js": 1
+  },
+  "total_files_analyzed": 18,
+  "frameworks_detected": [
+    "Flask"
+  ],
+  "ai_analysis": null
+}

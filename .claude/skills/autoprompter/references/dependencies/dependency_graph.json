@@ -1,0 +1,246 @@
+{
+  "nodes": [
+    {
+      "file": "main.py",
+      "language": "Python"
+    },
+    {
+      "file": "src/claude_cli_client.py",
+      "language": "Python"
+    },
+    {
+      "file": "src/config_manager.py",
+      "language": "Python"
+    },
+    {
+      "file": "src/context_manager.py",
+      "language": "Python"
+    },
+    {
+      "file": "src/dataset_generator.py",
+      "language": "Python"
+    },
+    {
+      "file": "src/experiment_ledger.py",
+      "language": "Python"
+    },
+    {
+      "file": "src/llm_client.py",
+      "language": "Python"
+    },
+    {
+      "file": "src/local_llm_client.py",
+      "language": "Python"
+    },
+    {
+      "file": "src/metrics.py",
+      "language": "Python"
+    },
+    {
+      "file": "src/optimization_system.py",
+      "language": "Python"
+    },
+    {
+      "file": "src/prompt_optimizer.py",
+      "language": "Python"
+    },
+    {
+      "file": "src/robustness_tester.py",
+      "language": "Python"
+    },
+    {
+      "file": "static/js/app.js",
+      "language": "JavaScript"
+    },
+    {
+      "file": "tests/test_claude_cli_client.py",
+      "language": "Python"
+    },
+    {
+      "file": "tests/test_integration.py",
+      "language": "Python"
+    },
+    {
+      "file": "tests/test_optimization_fixes.py",
+      "language": "Python"
+    },
+    {
+      "file": "tests/test_reuse_dataset.py",
+      "language": "Python"
+    },
+    {
+      "file": "web_ui.py",
+      "language": "Python"
+    }
+  ],
+  "edges": [
+    {
+      "source": "main.py",
+      "target": "src/config_manager.py",
+      "import_type": "from",
+      "line_number": 22
+    },
+    {
+      "source": "main.py",
+      "target": "src/optimization_system.py",
+      "import_type": "from",
+      "line_number": 23
+    },
+    {
+      "source": "src/claude_cli_client.py",
+      "target": "src/llm_client.py",
+      "import_type": "from",
+      "line_number": 14
+    },
+    {
+      "source": "src/dataset_generator.py",
+      "target": "src/llm_client.py",
+      "import_type": "from",
+      "line_number": 11
+    },
+    {
+      "source": "src/experiment_ledger.py",
+      "target": "src/config_manager.py",
+      "import_type": "from",
+      "line_number": 325
+    },
+    {
+      "source": "src/llm_client.py",
+      "target": "src/config_manager.py",
+      "import_type": "from",
+      "line_number": 262
+    },
+    {
+      "source": "src/optimization_system.py",
+      "target": "src/config_manager.py",
+      "import_type": "from",
+      "line_number": 892
+    },
+    {
+      "source": "src/optimization_system.py",
+      "target": "src/llm_client.py",
+      "import_type": "from",
+      "line_number": 17
+    },
+    {
+      "source": "src/optimization_system.py",
+      "target": "src/local_llm_client.py",
+      "import_type": "from",
+      "line_number": 18
+    },
+    {
+      "source": "src/optimization_system.py",
+      "target": "src/claude_cli_client.py",
+      "import_type": "from",
+      "line_number": 19
+    },
+    {
+      "source": "src/optimization_system.py",
+      "target": "src/dataset_generator.py",
+      "import_type": "from",
+      "line_number": 20
+    },
+    {
+      "source": "src/optimization_system.py",
+      "target": "src/experiment_ledger.py",
+      "import_type": "from",
+      "line_number": 21
+    },
+    {
+      "source": "src/optimization_system.py",
+      "target": "src/metrics.py",
+      "import_type": "from",
+      "line_number": 22
+    },
+    {
+      "source": "src/optimization_system.py",
+      "target": "src/context_manager.py",
+      "import_type": "from",
+      "line_number": 23
+    },
+    {
+      "source": "src/optimization_system.py",
+      "target": "src/prompt_optimizer.py",
+      "import_type": "from",
+      "line_number": 24
+    },
+    {
+      "source": "src/optimization_system.py",
+      "target": "src/robustness_tester.py",
+      "import_type": "from",
+      "line_number": 25
+    },
+    {
+      "source": "src/prompt_optimizer.py",
+      "target": "src/llm_client.py",
+      "import_type": "from",
+      "line_number": 10
+    },
+    {
+      "source": "src/prompt_optimizer.py",
+      "target": "src/config_manager.py",
+      "import_type": "from",
+      "line_number": 678
+    },
+    {
+      "source": "src/robustness_tester.py",
+      "target": "src/dataset_generator.py",
+      "import_type": "from",
+      "line_number": 14
+    },
+    {
+      "source": "tests/test_claude_cli_client.py",
+      "target": "src/claude_cli_client.py",
+      "import_type": "from",
+      "line_number": 15
+    },
+    {
+      "source": "tests/test_claude_cli_client.py",
+      "target": "src/config_manager.py",
+      "import_type": "from",
+      "line_number": 16
+    },
+    {
+      "source": "tests/test_integration.py",
+      "target": "src/local_llm_client.py",
+      "import_type": "from",
+      "line_number": 12
+    },
+    {
+      "source": "tests/test_integration.py",
+      "target": "src/config_manager.py",
+      "import_type": "from",
+      "line_number": 13
+    },
+    {
+      "source": "tests/test_reuse_dataset.py",
+      "target": "src/config_manager.py",
+      "import_type": "from",
+      "line_number": 16
+    },
+    {
+      "source": "tests/test_reuse_dataset.py",
+      "target": "src/dataset_generator.py",
+      "import_type": "from",
+      "line_number": 17
+    },
+    {
+      "source": "tests/test_reuse_dataset.py",
+      "target": "src/optimization_system.py",
+      "import_type": "from",
+      "line_number": 18
+    },
+    {
+      "source": "web_ui.py",
+      "target": "src/config_manager.py",
+      "import_type": "from",
+      "line_number": 902
+    },
+    {
+      "source": "web_ui.py",
+      "target": "src/optimization_system.py",
+      "import_type": "from",
+      "line_number": 29
+    }
+  ]
+}
