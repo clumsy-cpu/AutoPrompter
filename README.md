@@ -68,6 +68,7 @@ AutoPrompter supports multiple LLM backends:
 1. **OpenRouter** (default): Cloud-based LLM access via OpenRouter API
 2. **Ollama**: Local LLM inference using Ollama server
 3. **llama.cpp**: Local LLM inference using llama.cpp server
+4. **Claude Code CLI** (`claude_cli`): Claude through `claude -p`, using your Claude Code login (no API key)
 
 #### OpenRouter Configuration (Default)
 
@@ -103,6 +104,24 @@ optimizer_llm:
   temperature: 0.7
   max_tokens: 4096
 ```
+
+#### Claude Code CLI Configuration
+
+```yaml
+optimizer_llm:
+  backend: "claude_cli"
+  model: "sonnet"      # alias (sonnet, opus, haiku) or full model id
+  timeout: 300
+target_llm:
+  backend: "claude_cli"
+  model: "haiku"
+```
+
+Requires the `claude` CLI on `PATH`, already logged in. Each call runs
+`claude -p --safe-mode --tools ""`: no `CLAUDE.md`, hooks, skills, MCP or tools, so the model only answers.
+`temperature` and `max_tokens` are accepted but ignored (the CLI has no sampling flags). Calls are slower
+than API calls and count against your Claude Code usage. See `config_claude.yaml`:
+`python main.py --config config_claude.yaml`.
 
 ### Setting Up Local Backends
 

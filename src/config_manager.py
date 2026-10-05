@@ -69,6 +69,29 @@ class LocalLLMConfig:
 
 
 @dataclass
+class ClaudeCLIConfig:
+    """Configuration for the Claude Code CLI backend (`claude -p`, uses your Claude Code login)."""
+    model: str = "sonnet"  # alias or full model id passed to --model
+    backend: str = "claude_cli"
+    command: str = "claude"
+    timeout: int = 300
+    min_request_interval: float = 0.0
+    temperature: float = 0.7  # accepted for config compatibility; the CLI has no sampling flags
+    max_tokens: int = 4096  # accepted for config compatibility; ignored
+    api_key: Optional[str] = None  # unused; Config.to_yaml writes this key into every LLM block
+
+
+def _build_llm_config(data: Dict[str, Any]):
+    """Pick the config class for an optimizer_llm / target_llm block by its backend."""
+    backend = data.get('backend', 'openrouter')
+    if backend == 'claude_cli':
+        return ClaudeCLIConfig(**data)
+    if backend in ['ollama', 'llama_cpp', 'auto']:
+        return LocalLLMConfig(**data)
+    return LLMConfig(**data)
+
+
+@dataclass
 class ExperimentConfig:
     """Configuration for experiment parameters."""
     max_iterations: int = 100
@@ -132,20 +155,12 @@ class Config:
         optimizer_data = data.get('optimizer_llm', {})
         target_data = data.get('target_llm', {})
         
-        # Check if using local backend
-        optimizer_backend = optimizer_data.get('backend', 'openrouter')
-        target_backend = target_data.get('backend', 'openrouter')
+        # The backend field of each block picks its config class
         
         # Create appropriate config objects
-        if optimizer_backend in ['ollama', 'llama_cpp', 'auto']:
-            optimizer_llm = LocalLLMConfig(**optimizer_data)
-        else:
-            optimizer_llm = LLMConfig(**optimizer_data)
+        optimizer_llm = _build_llm_config(optimizer_data)
         
-        if target_backend in ['ollama', 'llama_cpp', 'auto']:
-            target_llm = LocalLLMConfig(**target_data)
-        else:
-            target_llm = LLMConfig(**target_data)
+        target_llm = _build_llm_config(target_data)
         
         return cls(
             optimizer_llm=optimizer_llm,

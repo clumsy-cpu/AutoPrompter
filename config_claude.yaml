@@ -1,0 +1,39 @@
+# Autonomous Prompt Optimization System Configuration - Claude Code CLI backend
+# Both models run through `claude -p` and use your Claude Code login (no API key).
+# temperature and max_tokens are ignored by this backend: the CLI has no sampling flags.
+# `model` is an alias (sonnet, opus, haiku) or a full model id.
+
+optimizer_llm:
+  backend: "claude_cli"
+  model: "sonnet"          # writes datasets and new prompts
+  timeout: 300
+
+target_llm:
+  backend: "claude_cli"
+  model: "haiku"           # runs the prompt under test; a smaller model leaves room to improve
+  timeout: 120
+
+experiment:
+  max_iterations: 5
+  convergence_threshold: 0.95
+  min_improvement: 0.01
+  batch_size: 5
+
+task:
+  name: "text_classification"
+  description: "Classify text into positive or negative sentiment"
+  initial_prompt: "Analyze the sentiment of the following text and respond with only 'positive' or 'negative'."
+
+metric:
+  type: "accuracy"
+  target_score: 0.95
+
+context:
+  max_experiments_in_context: 20
+  compression_threshold: 50
+
+storage:
+  ledger_file: "experiment_ledger_claude.json"
+  dataset_file: "generated_dataset_claude.json"
+  results_dir: "results"
+  checkpoint_interval: 10

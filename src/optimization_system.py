@@ -13,9 +13,10 @@ from scipy import stats
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 
-from config_manager import Config, LLMConfig, LocalLLMConfig
+from config_manager import Config, LLMConfig, LocalLLMConfig, ClaudeCLIConfig
 from llm_client import LLMClient
 from local_llm_client import LocalLLMClient
+from claude_cli_client import ClaudeCLIClient
 from dataset_generator import DatasetGenerator, DatasetEntry
 from experiment_ledger import ExperimentLedger, ExperimentRecord as Experiment
 from metrics import MetricsEvaluator, MetricDefinition
@@ -35,6 +36,15 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def create_llm_client(llm_config):
+    """Return the client that matches the config class (OpenRouter, local, or Claude CLI)."""
+    if isinstance(llm_config, ClaudeCLIConfig):
+        return ClaudeCLIClient(llm_config)
+    if isinstance(llm_config, LocalLLMConfig):
+        return LocalLLMClient(llm_config)
+    return LLMClient(llm_config)
+
+
 class PromptOptimizationSystem:
     """Main system for autonomous prompt optimization."""
     
@@ -50,15 +60,9 @@ class PromptOptimizationSystem:
         self.progress_callback = progress_callback
         
         # Initialize components based on backend type
-        if isinstance(config.optimizer_llm, LocalLLMConfig):
-            self.optimizer_llm = LocalLLMClient(config.optimizer_llm)
-        else:
-            self.optimizer_llm = LLMClient(config.optimizer_llm)
+        self.optimizer_llm = create_llm_client(config.optimizer_llm)
         
-        if isinstance(config.target_llm, LocalLLMConfig):
-            self.target_llm = LocalLLMClient(config.target_llm)
-        else:
-            self.target_llm = LLMClient(config.target_llm)
+        self.target_llm = create_llm_client(config.target_llm)
         
         self.dataset_generator = DatasetGenerator(
             self.optimizer_llm, 
