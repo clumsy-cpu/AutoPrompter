@@ -671,8 +671,8 @@ class PromptOptimizationSystem:
             else:
                 logger.warning("Failed to generate custom metric, using semantic_similarity fallback")
         
-        # Generate dataset - always generate fresh based on task config
-        self.dataset = self.generate_dataset(force_refresh=True)
+        # Generate a fresh dataset from the task config, unless experiment.reuse_dataset loads storage.dataset_file
+        self.dataset = self.generate_dataset(force_refresh=not self.config.experiment.reuse_dataset)
         if not self.dataset:
             logger.error("Cannot proceed without dataset")
             return {'status': 'failed', 'reason': 'No dataset'}

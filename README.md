@@ -56,7 +56,7 @@ The system is configured via YAML files. Key fields include:
 
 - `optimizer_llm`: Model ID and parameters for the optimizer.
 - `target_llm`: Model ID and parameters for the target.
-- `experiment`: `max_iterations`, `batch_size`, and convergence thresholds.
+- `experiment`: `max_iterations`, `batch_size`, and convergence thresholds. Set `reuse_dataset: true` to test on your own saved `storage.dataset_file` (a JSON list of `{input, expected_output}`; the first `batch_size` entries are used). By default every run generates a fresh dataset.
 - `task`: `name`, `description`, and `initial_prompt`.
 - `metric`: `type` (e.g., `accuracy`, `semantic_similarity`) and `target_score`.
 - `storage`: Paths for the ledger, dataset, and results.

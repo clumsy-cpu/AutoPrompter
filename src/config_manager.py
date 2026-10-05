@@ -101,6 +101,7 @@ class ExperimentConfig:
     parallel_enabled: bool = False
     parallel_workers: int = 3
     parallel_candidates: int = 3
+    reuse_dataset: bool = False  # True: load the first batch_size entries of storage.dataset_file instead of regenerating
 
 
 @dataclass
