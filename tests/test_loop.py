@@ -179,3 +179,47 @@ def test_batch_drops_leaking_candidates_before_testing(tmp_path):
     # generate_candidates itself drops "P0" (the current prompt) and adds its fallback proposal
     assert {target_parts(p)[0] for p, _ in tgt.calls} == {"P0", "GOOD", "FALLBACK"}
     assert report["skipped_proposals"] == {"label_leak": 1}
+
+
+def demo_target(examples_help):
+    """Target that knows v1, v2 and t1 only when the prompt carries examples (or never, if they don't help)."""
+    def respond(full_prompt, system_message):
+        prompt, inp = target_parts(full_prompt)
+        has_examples = "\n\nExamples:\n\n" in prompt
+        if has_examples == examples_help and inp in {"v1", "v2", "t1"}:
+            return ANSWERS[inp]
+        return "x"
+    return respond
+
+
+def demo_system(tmp_path, examples_help):
+    storage = {"val_file": write_json(tmp_path / "val.json", VAL),
+               "test_file": write_json(tmp_path / "test.json", TEST)}
+    return make_system(tmp_path, scripted_optimizer(["P1"]), demo_target(examples_help), TRAIN,
+                       experiment={"max_iterations": 1, "demo_count": 2, "demo_trials": 3}, storage=storage)
+
+
+def test_examples_are_kept_when_they_beat_the_prompt_alone_on_val(tmp_path):
+    system, opt, tgt = demo_system(tmp_path, examples_help=True)
+    report = system.run()
+    assert (report["val_without_demos"], report["val_with_demos"]) == (0.0, 0.5)
+    assert len(report["demos"]) == 2
+    assert {d["input"] for d in report["demos"]} <= {i for i, _ in TRAIN}  # train only
+    assert report["final_prompt"].startswith(report["best_prompt"] + "\n\nExamples:\n\n")
+    assert report["test_best"] == 0.5  # the test set sees the prompt with its examples
+    assert not any("Examples:" in p for p, _ in opt.calls)  # examples never pass through the Optimizer
+
+
+def test_examples_are_dropped_when_they_do_not_help(tmp_path):
+    report = demo_system(tmp_path, examples_help=False)[0].run()
+    assert report["demos"] == [] and report["val_with_demos"] is None
+    assert report["final_prompt"] == report["best_prompt"]
+
+
+def test_demo_count_requires_val_file(tmp_path):
+    from config_manager import load_config
+    cfg = tmp_path / "c.yaml"
+    cfg.write_text("optimizer_llm: {backend: claude_cli}\ntarget_llm: {backend: claude_cli}\n"
+                   "experiment: {demo_count: 2}\n")
+    with pytest.raises(ValueError, match="demo_count"):
+        load_config(str(cfg))

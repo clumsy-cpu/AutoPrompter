@@ -107,6 +107,9 @@ class ExperimentConfig:
     hide_expected: bool = False  # True: the Optimizer never sees expected outputs (feedback and history)
     label_guard: bool = False  # True: reject proposals that contain a train or val expected output
     candidates_per_step: int = 1  # >1: propose this many prompts per iteration (max 5), keep the best on train
+    demo_count: int = 0  # >0: after the loop, try adding this many train examples to the best prompt (needs storage.val_file)
+    demo_trials: int = 4  # random example sets tried; one is kept only if it beats the prompt alone on val
+    seed: int = 0  # seed for the example sets
 
 
 @dataclass
@@ -252,6 +255,8 @@ class Config:
             errors.append("experiment.batch_size must be >= 1")
         if self.experiment.candidates_per_step < 1:
             errors.append("experiment.candidates_per_step must be >= 1")
+        if self.experiment.demo_count > 0 and not self.storage.val_file:
+            errors.append("experiment.demo_count needs storage.val_file (examples are selected on val)")
         
         if self.experiment.acceptance not in ('always', 'val'):
             errors.append(f"experiment.acceptance must be 'always' or 'val', got '{self.experiment.acceptance}'")

@@ -5,6 +5,7 @@ Integrates all modules and manages the iterative improvement loop.
 
 import os
 import json
+import random
 import time
 import logging
 from typing import List, Dict, Any, Optional, Tuple
@@ -133,6 +134,11 @@ class PromptOptimizationSystem:
         self.candidates_per_step = getattr(config.experiment, 'candidates_per_step', 1)
         if self.candidates_per_step > 5:
             logger.warning(f"candidates_per_step={self.candidates_per_step} capped at 5 (one per proposal strategy)")
+
+        # Few-shot examples chosen on val after the loop (experiment.demo_count > 0)
+        self.demos: List[DatasetEntry] = []
+        self.demo_scores: Dict[str, Optional[float]] = {}
+        self.final_prompt = config.task.initial_prompt  # best prompt plus any chosen examples
 
         # Statistical tracking for significance testing
         self.best_scores_history: List[float] = []
@@ -678,6 +684,11 @@ class PromptOptimizationSystem:
             })
         if self.guard_stats:
             report['skipped_proposals'] = self.guard_stats
+        if self.demo_scores:
+            report['demos'] = [{'input': d.input, 'expected_output': d.expected_output} for d in self.demos]
+            report['val_without_demos'] = self.demo_scores['without']
+            report['val_with_demos'] = self.demo_scores['with']
+        report['final_prompt'] = self.final_prompt  # best_prompt plus the chosen examples, if any
         if self.test_scores:
             report['test_initial'] = self.test_scores['initial']
             report['test_best'] = self.test_scores['best']
@@ -917,10 +928,43 @@ class PromptOptimizationSystem:
             self.save_checkpoint()
         return self.metric_def.is_target_reached(self.incumbent_val.mean_score)
 
+    @staticmethod
+    def _with_demos(prompt: str, demos: List[DatasetEntry]) -> str:
+        block = "\n\n".join(f"Input: {d.input}\nOutput: {d.expected_output}" for d in demos)
+        return f"{prompt}\n\nExamples:\n\n{block}"
+
+    def _select_demos(self):
+        """Try demo_trials random sets of train examples after the best prompt; keep the best set on val.
+
+        Examples sit in their own block, separate from the instruction the Optimizer writes,
+        and are kept only if they beat the prompt alone on val.
+        """
+        base = self.raw_best_prompt
+        if self.incumbent_val is not None and self.incumbent_val.prompt == base:
+            base_score = self.incumbent_val.mean_score
+        else:
+            base_score = self.run_experiment(base, self.val_set).mean_score
+        k = min(self.config.experiment.demo_count, len(self.dataset))
+        rng = random.Random(self.config.experiment.seed)
+        best_demos, best_score = None, base_score
+        for trial in range(self.config.experiment.demo_trials):
+            demos = rng.sample(self.dataset, k)
+            score = self.run_experiment(self._with_demos(base, demos), self.val_set).mean_score
+            logger.info(f"Example set {trial + 1}: val {score:.3f} (prompt alone: {base_score:.3f})")
+            if score > best_score:
+                best_demos, best_score = demos, score
+        self.demo_scores = {'without': base_score, 'with': best_score if best_demos else None}
+        if best_demos:
+            self.demos = best_demos
+            self.final_prompt = self._with_demos(base, best_demos)
+            logger.info(f"Keeping {k} examples: val {base_score:.3f} -> {best_score:.3f}")
+        else:
+            logger.info("No example set beat the prompt alone on val; keeping it without examples")
+
     def _score_test_set(self):
         """Score the initial and final prompts once on the test set (reported, never used for decisions)."""
         initial = self.config.task.initial_prompt
-        final = self.raw_best_prompt
+        final = self.final_prompt
         logger.info(f"Scoring initial and final prompts on the test set ({len(self.test_set)} items)")
         initial_score = self.run_experiment(initial, self.test_set).mean_score
         final_score = initial_score if final == initial else self.run_experiment(final, self.test_set).mean_score
@@ -1093,6 +1137,9 @@ class PromptOptimizationSystem:
         # The ledger only autosaves every checkpoint_interval records; write the rest now
         self.ledger.close()
 
+        self.final_prompt = self.raw_best_prompt
+        if self.config.experiment.demo_count > 0 and self.val_set:
+            self._select_demos()
         if self.test_set:
             self._score_test_set()
 
