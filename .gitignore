@@ -9,3 +9,4 @@ results_math/
 results_reasoning/
 .env
 .vscode/
+.claude-trace/
