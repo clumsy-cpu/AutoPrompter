@@ -261,8 +261,9 @@ class Config:
         
         if self.experiment.acceptance not in ('always', 'val'):
             errors.append(f"experiment.acceptance must be 'always' or 'val', got '{self.experiment.acceptance}'")
-        if self.experiment.acceptance == 'val' and not self.storage.val_file:
-            errors.append("experiment.acceptance=val needs storage.val_file")
+        if self.experiment.acceptance == 'val' and not (self.storage.val_file and self.storage.test_file):
+            errors.append("experiment.acceptance=val needs storage.val_file and storage.test_file "
+                          "(fixed sets with labels the Optimizer did not write)")
         
         # Validate task config
         if not self.task.name:

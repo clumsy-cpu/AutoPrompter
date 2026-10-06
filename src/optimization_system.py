@@ -137,6 +137,7 @@ class PromptOptimizationSystem:
         self.val_initial: Optional[float] = None
         self.gate_stats: Dict[str, Any] = {'accepted': 0, 'rejected': 0, 'reasons': {}}
         self.test_scores: Dict[str, float] = {}
+        self.warnings: List[str] = []  # copied into the report
 
         # Keeping labels away from the Optimizer
         self.hide_expected = getattr(config.experiment, 'hide_expected', False)
@@ -218,6 +219,12 @@ class PromptOptimizationSystem:
         if not entries:
             logger.error("Failed to generate dataset")
             return []
+
+        warning = ("Self-graded dataset: the Optimizer wrote these inputs and expected outputs from "
+                   "task.description, so scores measure agreement with its own answers. For independent "
+                   "labels, build a dataset from ground truth and load it with experiment.reuse_dataset.")
+        logger.warning(warning)
+        self.warnings.append(warning)
         
         # Validate dataset
         is_valid, message = self.dataset_generator.validate_dataset(entries)
@@ -728,6 +735,8 @@ class PromptOptimizationSystem:
             'experiments_count': len(self.run_scores)
         }
         report['acceptance'] = 'val' if self.gated else 'always'
+        if self.warnings:
+            report['warnings'] = self.warnings
         if self.gated:
             report.update({
                 'val_initial': self.val_initial,
@@ -758,8 +767,10 @@ class PromptOptimizationSystem:
             return []
         entries = self.dataset_generator.load_dataset(path)
         if entries and len(entries) < 30:
-            logger.warning(f"{name} set has only {len(entries)} items: one item moves its score by "
-                           f"{1 / len(entries):.2f}, so small differences are noise")
+            warning = (f"{name} set has only {len(entries)} items: one item moves its score by "
+                       f"{1 / len(entries):.2f}, so small differences are noise")
+            logger.warning(warning)
+            self.warnings.append(warning)
         return entries
 
     def _reject(self, reason: str, detail: str):
