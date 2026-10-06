@@ -52,6 +52,10 @@ def strip_keep_markers(prompt: str) -> str:
     return re.sub(_KEEP_MARKER, "", _KEEP_MARKER_LINE.sub("", prompt))
 
 
+class TargetCallError(RuntimeError):
+    """A Target call failed after its client's retries (experiment.stop_on_failed_call)."""
+
+
 def create_llm_client(llm_config):
     """Return the client that matches the config class (OpenRouter, local, or Claude CLI)."""
     if isinstance(llm_config, ClaudeCLIConfig):
@@ -158,6 +162,8 @@ class PromptOptimizationSystem:
         # Protected sections: blocks of the initial prompt between <<<KEEP>>> and <<<END KEEP>>>
         self.protected_blocks: List[str] = _KEEP_BLOCK.findall(config.task.initial_prompt)
 
+        self.stop_on_failed_call = getattr(config.experiment, 'stop_on_failed_call', False)
+
         # Reference material for the Target (task.context_files), loaded by run()
         self.context_files: List[str] = list(getattr(config.task, 'context_files', None) or [])
         self.reference_block = ""
@@ -243,6 +249,15 @@ class PromptOptimizationSystem:
         
         return entries
     
+    def _check_failed_call(self, response, inp: str):
+        """With experiment.stop_on_failed_call, a failed Target call stops the run.
+
+        Otherwise the failure counts as an empty answer and scores 0, so an outage
+        silently lowers scores. An empty answer from a successful call still scores 0.
+        """
+        if self.stop_on_failed_call and not response.success:
+            raise TargetCallError(f"Target call failed after retries on input {inp[:60]!r}: {response.error}")
+
     def _target_prompt(self, prompt: str, inp: str) -> str:
         """What the Target model receives for one input: reference material, prompt, input."""
         return f"{self.reference_block}{strip_keep_markers(prompt)}\n\nInput: {inp}\n\nOutput:"
@@ -296,6 +311,7 @@ class PromptOptimizationSystem:
             else:
                 error_msg = response.error if response.error else "Empty or invalid response"
                 logger.error(f"Target LLM query failed: {error_msg}")
+                self._check_failed_call(response, inp)
                 actual_outputs.append("")
         
         # Evaluate results
@@ -345,6 +361,7 @@ class PromptOptimizationSystem:
             else:
                 error_msg = response.error if response.error else "Empty or invalid response"
                 logger.error(f"[Worker {worker_id}] Target LLM query failed: {error_msg}")
+                self._check_failed_call(response, inp)
                 actual_outputs.append("")
         
         # Evaluate results
@@ -404,6 +421,8 @@ class PromptOptimizationSystem:
                 try:
                     experiment = future.result()
                     results.append((prompt, experiment))
+                except TargetCallError:
+                    raise
                 except Exception as e:
                     logger.error(f"Parallel experiment failed for prompt: {e}")
                     # Create a failed experiment record
@@ -1047,6 +1066,16 @@ class PromptOptimizationSystem:
         logger.info(f"Test score: initial {initial_score:.3f}, final {final_score:.3f}")
 
     def run(self) -> Dict[str, Any]:
+        """Run the full optimization loop (see _run). A failed Target call stops it when
+        experiment.stop_on_failed_call is on: the ledger is saved and a failed status returned."""
+        try:
+            return self._run()
+        except TargetCallError as e:
+            logger.error(f"Stopping: {e}")
+            self.ledger.close()
+            return {'status': 'failed', 'reason': str(e)}
+
+    def _run(self) -> Dict[str, Any]:
         """Run the full optimization loop.
         
         Each iteration proposes one new prompt from the previous result, tests it on
