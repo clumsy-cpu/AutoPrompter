@@ -102,6 +102,8 @@ class ExperimentConfig:
     parallel_workers: int = 3
     parallel_candidates: int = 3
     reuse_dataset: bool = False  # True: load the first batch_size entries of storage.dataset_file instead of regenerating
+    acceptance: str = "always"  # always: every proposal replaces the prompt; val: kept only if it beats the current prompt on storage.val_file
+    val_significance: bool = False  # with acceptance=val, also require a significant val improvement (t-test, bootstrap fallback)
 
 
 @dataclass
@@ -133,6 +135,8 @@ class StorageConfig:
     dataset_file: str = "generated_dataset.json"
     results_dir: str = "results"
     checkpoint_interval: int = 10
+    val_file: str = ""  # selection set (acceptance=val); never shown to the Optimizer
+    test_file: str = ""  # scored once at the end for the initial and final prompts
 
 
 @dataclass
@@ -243,6 +247,11 @@ class Config:
             errors.append("experiment.max_iterations must be >= 1")
         if self.experiment.batch_size < 1:
             errors.append("experiment.batch_size must be >= 1")
+        
+        if self.experiment.acceptance not in ('always', 'val'):
+            errors.append(f"experiment.acceptance must be 'always' or 'val', got '{self.experiment.acceptance}'")
+        if self.experiment.acceptance == 'val' and not self.storage.val_file:
+            errors.append("experiment.acceptance=val needs storage.val_file")
         
         # Validate task config
         if not self.task.name:

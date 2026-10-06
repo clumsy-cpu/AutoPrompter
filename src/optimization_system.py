@@ -112,6 +112,16 @@ class PromptOptimizationSystem:
         self.last_experiment: Optional[Experiment] = None  # feedback source for the next proposal
         self.run_scores: List[float] = []  # mean train score of each experiment in this run
 
+        # Validation-gated acceptance (experiment.acceptance = 'val')
+        self.gated = getattr(config.experiment, 'acceptance', 'always') == 'val'
+        self.val_set: List[DatasetEntry] = []
+        self.test_set: List[DatasetEntry] = []
+        self.incumbent_train: Optional[Experiment] = None  # train result of the accepted prompt
+        self.incumbent_val: Optional[Experiment] = None  # val result of the accepted prompt
+        self.val_initial: Optional[float] = None
+        self.gate_stats: Dict[str, Any] = {'accepted': 0, 'rejected': 0, 'reasons': {}}
+        self.test_scores: Dict[str, float] = {}
+
         # Statistical tracking for significance testing
         self.best_scores_history: List[float] = []
         self.baseline_established = False
@@ -643,8 +653,68 @@ class PromptOptimizationSystem:
             'target_reached': self.metric_def.is_target_reached(final_score),
             'experiments_count': len(self.run_scores)
         }
+        report['acceptance'] = 'val' if self.gated else 'always'
+        if self.gated:
+            report.update({
+                'val_initial': self.val_initial,
+                'val_best': self.incumbent_val.mean_score,
+                'accepted': self.gate_stats['accepted'],
+                'rejected': self.gate_stats['rejected'],
+                'rejection_reasons': self.gate_stats['reasons'],
+                'target_reached': self.metric_def.is_target_reached(self.incumbent_val.mean_score),
+            })
+        if self.test_scores:
+            report['test_initial'] = self.test_scores['initial']
+            report['test_best'] = self.test_scores['best']
         
         return report
+
+    def _load_split(self, path: str, name: str) -> List[DatasetEntry]:
+        """Load a fixed val or test set (never generated). Empty path means no set."""
+        if not path:
+            return []
+        entries = self.dataset_generator.load_dataset(path)
+        if entries and len(entries) < 30:
+            logger.warning(f"{name} set has only {len(entries)} items: one item moves its score by "
+                           f"{1 / len(entries):.2f}, so small differences are noise")
+        return entries
+
+    def _reject(self, reason: str, detail: str):
+        self.gate_stats['rejected'] += 1
+        self.gate_stats['reasons'][reason] = self.gate_stats['reasons'].get(reason, 0) + 1
+        logger.info(f"REJECTED ({reason}): {detail}")
+
+    def _val_gate(self, experiment) -> Tuple[bool, str]:
+        """Decide whether a candidate (already scored on train) replaces the incumbent.
+
+        Cheap check first: the candidate must not lose on train. Then it must beat the
+        incumbent on the val set. Returns (accepted, status text for the Optimizer's history).
+        """
+        inc_train = self.incumbent_train.mean_score
+        if experiment.mean_score < inc_train:
+            detail = f"train {experiment.mean_score:.3f} < current {inc_train:.3f}"
+            self._reject('train', detail)
+            return False, f"REJECTED: {detail}"
+
+        val_exp = self.run_experiment(experiment.prompt, self.val_set)
+        inc_val = self.incumbent_val.mean_score
+        better = val_exp.mean_score > inc_val
+        if better and self.config.experiment.val_significance:
+            better = self._is_significant_improvement(
+                val_exp.metric_scores, self.incumbent_val.metric_scores, val_exp.mean_score, inc_val
+            )
+        if not better:
+            detail = (f"held-out score {val_exp.mean_score:.3f} did not beat current {inc_val:.3f} "
+                      f"(train {experiment.mean_score:.3f})")
+            self._reject('val', detail)
+            return False, f"REJECTED: {detail}"
+
+        self.gate_stats['accepted'] += 1
+        self.incumbent_train = experiment
+        self.incumbent_val = val_exp
+        logger.info(f"*** ACCEPTED *** held-out score {val_exp.mean_score:.3f} (was {inc_val:.3f}), "
+                    f"train {experiment.mean_score:.3f}")
+        return True, f"ACCEPTED: held-out score {val_exp.mean_score:.3f} (was {inc_val:.3f})"
 
     def _record_context(self, experiment, improvement: float, **extra):
         """Add an experiment to the Optimizer's history, with its first 3 sample results."""
@@ -717,6 +787,37 @@ class PromptOptimizationSystem:
                 return candidate, False
         return candidate, True
     
+    def _decide_gated(self, experiment) -> bool:
+        """Apply the val gate to a scored candidate and update state. Returns True to stop (target reached)."""
+        previous_train = self.incumbent_train.mean_score
+        accepted, status = self._val_gate(experiment)
+        if accepted:
+            self.best_prompt = self.raw_best_prompt = experiment.prompt
+            self.best_score = self.raw_best_score = experiment.mean_score
+            self.best_scores_history = experiment.metric_scores.copy()
+        else:
+            self.current_prompt = self.incumbent_train.prompt  # revert
+        # The Optimizer sees the attempt and its outcome; the next proposal starts from the incumbent
+        self._record_context(experiment, experiment.mean_score - previous_train, status=status)
+        self.last_experiment = self.incumbent_train
+
+        if self.progress_callback:
+            self.progress_callback(self.iteration, self.raw_best_score, self.raw_best_prompt,
+                                   experiment.mean_score, experiment.prompt)
+        if self.iteration % self.config.storage.checkpoint_interval == 0:
+            self.save_checkpoint()
+        return self.metric_def.is_target_reached(self.incumbent_val.mean_score)
+
+    def _score_test_set(self):
+        """Score the initial and final prompts once on the test set (reported, never used for decisions)."""
+        initial = self.config.task.initial_prompt
+        final = self.raw_best_prompt
+        logger.info(f"Scoring initial and final prompts on the test set ({len(self.test_set)} items)")
+        initial_score = self.run_experiment(initial, self.test_set).mean_score
+        final_score = initial_score if final == initial else self.run_experiment(final, self.test_set).mean_score
+        self.test_scores = {'initial': initial_score, 'best': final_score}
+        logger.info(f"Test score: initial {initial_score:.3f}, final {final_score:.3f}")
+
     def run(self) -> Dict[str, Any]:
         """Run the full optimization loop.
         
@@ -751,6 +852,12 @@ class PromptOptimizationSystem:
             logger.error("Cannot proceed without dataset")
             return {'status': 'failed', 'reason': 'No dataset'}
         
+        self.val_set = self._load_split(self.config.storage.val_file, "Val")
+        self.test_set = self._load_split(self.config.storage.test_file, "Test")
+        if self.gated and not self.val_set:
+            logger.error("experiment.acceptance=val needs a non-empty storage.val_file")
+            return {'status': 'failed', 'reason': 'No val set'}
+        
         # Use the full dataset for each experiment (batch_size = dataset size)
         # This ensures each experiment tests on all test cases
         logger.info(f"Using full dataset of {len(self.dataset)} test cases for each experiment")
@@ -776,6 +883,12 @@ class PromptOptimizationSystem:
         
         # Add to context manager
         self._record_context(baseline_experiment, 0.0, iteration=0, is_baseline=True)
+        
+        if self.gated:
+            self.incumbent_train = baseline_experiment
+            self.incumbent_val = self.run_experiment(self.best_prompt, self.val_set)
+            self.val_initial = self.incumbent_val.mean_score
+            logger.info(f"Baseline held-out (val) score: {self.val_initial:.3f}")
         
         logger.info(f"*** BASELINE ESTABLISHED *** Score: {self.best_score:.3f}")
         baseline_preview = self.best_prompt[:300].replace('\n', ' ↵ ')
@@ -815,6 +928,13 @@ class PromptOptimizationSystem:
             
             # Add to ledger
             self.ledger.add_experiment(experiment)
+            self.run_scores.append(experiment.mean_score)
+
+            if self.gated:
+                if self._decide_gated(experiment):
+                    logger.info("Target score reached on the val set, stopping optimization")
+                    break
+                continue
             
             # Update best if improved (with statistical significance testing)
             current_score = experiment.mean_score
@@ -853,7 +973,6 @@ class PromptOptimizationSystem:
             # Add to context manager
             self._record_context(experiment, current_score - previous_score)
             self.last_experiment = experiment
-            self.run_scores.append(current_score)
             
             # Check convergence
             if self.check_convergence(current_score, previous_score):
@@ -868,6 +987,9 @@ class PromptOptimizationSystem:
         
         # The ledger only autosaves every checkpoint_interval records; write the rest now
         self.ledger.close()
+
+        if self.test_set:
+            self._score_test_set()
 
         # Generate final report
         report = self.generate_summary_report()

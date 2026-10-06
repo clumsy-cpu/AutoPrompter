@@ -121,6 +121,9 @@ class ContextManager:
             f"  Score: {exp.get('metric_score', 0):.3f}",
         ]
         
+        if exp.get('status'):
+            lines.append(f"  Status: {exp['status']}")
+        
         # Add improvement if available
         if 'improvement' in exp:
             lines.append(f"  Improvement: {exp['improvement']:+.3f}")

@@ -11,18 +11,26 @@ import pytest
 pytest.importorskip("scipy")  # optimization_system imports scipy at module level
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from fakes import make_system, scripted_optimizer, target_parts
+from fakes import make_system, scripted_optimizer, target_parts, write_json
 from config_manager import Config, LocalLLMConfig, LLMConfig
 
 TRAIN = [("q1", "a1"), ("q2", "a2"), ("q3", "a3"), ("q4", "a4")]
+VAL = [("v1", "b1"), ("v2", "b2"), ("v3", "b3"), ("v4", "b4")]
+TEST = [("t1", "c1"), ("t2", "c2")]
+ANSWERS = dict(TRAIN + VAL + TEST)
 
 
 def knows(answers_by_prompt):
     """Target that answers correctly the inputs listed for its prompt, 'x' otherwise."""
     def respond(full_prompt, system_message):
         prompt, inp = target_parts(full_prompt)
-        return dict(TRAIN)[inp] if inp in answers_by_prompt.get(prompt, ()) else "x"
+        return ANSWERS[inp] if inp in answers_by_prompt.get(prompt, ()) else "x"
     return respond
+
+
+def prompts_tested(target_fake, inputs):
+    """Prompts the target was called with on the first input of a set, in call order."""
+    return [target_parts(p)[0] for p, _ in target_fake.calls if target_parts(p)[1] == inputs[0][0]]
 
 
 def test_first_iteration_tests_a_new_prompt_and_report_uses_this_runs_baseline(tmp_path):
@@ -70,3 +78,62 @@ def test_to_yaml_round_trips_local_and_openrouter_blocks(tmp_path, monkeypatch):
     loaded = Config.from_yaml(str(out))
     assert isinstance(loaded.target_llm, LocalLLMConfig)
     assert isinstance(loaded.optimizer_llm, LLMConfig)
+
+
+# A lookup-table prompt memorises train and knows nothing held out; GOOD generalises a little.
+GATE_TARGET = knows({
+    "P0": {"q1", "v1"},
+    "LOOKUP": {"q1", "q2", "q3", "q4"},
+    "WORSE": set(),
+    "GOOD": {"q1", "q2", "v1", "v2", "t1"},
+})
+
+
+def gated_system(tmp_path, proposals, **experiment):
+    storage = {"val_file": write_json(tmp_path / "val.json", VAL),
+               "test_file": write_json(tmp_path / "test.json", TEST)}
+    return make_system(tmp_path, scripted_optimizer(proposals), GATE_TARGET, TRAIN,
+                       experiment={"acceptance": "val", "max_iterations": len(proposals), **experiment},
+                       storage=storage)
+
+
+def test_val_gate_rejects_lookup_table_and_accepts_prompt_that_generalises(tmp_path):
+    system, opt, tgt = gated_system(tmp_path, ["LOOKUP", "WORSE", "GOOD"])
+    report = system.run()
+    assert report["acceptance"] == "val"
+    assert report["best_prompt"] == "GOOD" and report["stat_best_prompt"] == "GOOD"
+    assert (report["accepted"], report["rejected"]) == (1, 2)
+    assert report["rejection_reasons"] == {"val": 1, "train": 1}
+    assert (report["val_initial"], report["val_best"]) == (0.25, 0.5)
+    assert (report["test_initial"], report["test_best"]) == (0.0, 0.5)
+    # WORSE lost on train, so it never cost val calls; test is scored once per prompt at the end
+    assert prompts_tested(tgt, VAL) == ["P0", "LOOKUP", "GOOD"]
+    assert prompts_tested(tgt, TEST) == ["P0", "GOOD"]
+
+
+def test_rejected_prompt_is_reverted_and_shown_to_optimizer_as_rejected(tmp_path):
+    system, opt, tgt = gated_system(tmp_path, ["LOOKUP", "GOOD"])
+    system.run()
+    second_request = opt.calls[1][0]
+    assert "Current Prompt:\n```\nP0\n```" in second_request  # reverted to the incumbent
+    assert "REJECTED" in second_request and "LOOKUP" in second_request
+    assert "v1" not in second_request and "b1" not in second_request  # val never reaches the Optimizer
+
+
+def test_legacy_mode_still_adopts_the_lookup_table(tmp_path):
+    storage = {"test_file": write_json(tmp_path / "test.json", TEST)}
+    system = make_system(tmp_path, scripted_optimizer(["LOOKUP", "GOOD"]), GATE_TARGET, TRAIN,
+                         experiment={"max_iterations": 2}, storage=storage)[0]
+    report = system.run()
+    assert report["acceptance"] == "always" and report["best_prompt"] == "LOOKUP"
+    assert (report["test_initial"], report["test_best"]) == (0.0, 0.0)
+    assert "val_best" not in report
+
+
+def test_acceptance_val_requires_val_file(tmp_path):
+    from config_manager import load_config
+    cfg = tmp_path / "c.yaml"
+    cfg.write_text("optimizer_llm: {backend: claude_cli}\ntarget_llm: {backend: claude_cli}\n"
+                   "experiment: {acceptance: val}\n")
+    with pytest.raises(ValueError, match="val_file"):
+        load_config(str(cfg))
