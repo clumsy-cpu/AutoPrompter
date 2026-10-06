@@ -5,7 +5,8 @@ Uses mocked responses to verify functionality without requiring actual local ser
 
 import sys
 import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
 
 from unittest.mock import Mock, patch, MagicMock
 import json
@@ -157,22 +158,24 @@ def test_batch_query():
         print(f"✓ Batch query successful: {len(responses)} responses processed")
 
 
+@patch.dict(os.environ, {"OPENROUTER_API_KEY": "test-key"})  # openrouter blocks need a key at load time
 def test_config_loading_ollama():
     """Test loading Ollama configuration from YAML."""
     print("\n=== Testing Ollama Config Loading ===")
     
-    config = Config.from_yaml("/root/AutoPrompter/config_ollama.yaml")
+    config = Config.from_yaml(os.path.join(ROOT, "config_ollama.yaml"))
     
-    assert isinstance(config.optimizer_llm, LocalLLMConfig), "Optimizer should use LocalLLMConfig"
-    assert config.optimizer_llm.backend == "ollama"
-    assert config.optimizer_llm.model == "llama3.2"
-    assert config.optimizer_llm.port == 11434
+    # config_ollama.yaml runs the optimizer on OpenRouter and only the target on Ollama
+    assert isinstance(config.optimizer_llm, LLMConfig), "Optimizer should use LLMConfig (OpenRouter)"
+    assert isinstance(config.target_llm, LocalLLMConfig), "Target should use LocalLLMConfig"
+    assert config.target_llm.backend == "ollama"
+    assert config.target_llm.port == 11434
     
     errors = config.validate()
     assert len(errors) == 0, f"Config validation failed: {errors}"
     
     print(f"✓ Ollama config loaded successfully")
-    print(f"  Optimizer: {config.optimizer_llm.model} (port {config.optimizer_llm.port})")
+    print(f"  Optimizer: {config.optimizer_llm.model}")
     print(f"  Target: {config.target_llm.model} (port {config.target_llm.port})")
 
 
@@ -180,7 +183,7 @@ def test_config_loading_llama_cpp():
     """Test loading llama.cpp configuration from YAML."""
     print("\n=== Testing llama.cpp Config Loading ===")
     
-    config = Config.from_yaml("/root/AutoPrompter/config_llama_cpp.yaml")
+    config = Config.from_yaml(os.path.join(ROOT, "config_llama_cpp.yaml"))
     
     assert isinstance(config.optimizer_llm, LocalLLMConfig), "Optimizer should use LocalLLMConfig"
     assert config.optimizer_llm.backend == "llama_cpp"
@@ -195,11 +198,12 @@ def test_config_loading_llama_cpp():
     print(f"  Target: {config.target_llm.model} (port {config.target_llm.port})")
 
 
+@patch.dict(os.environ, {"OPENROUTER_API_KEY": "test-key"})  # openrouter blocks need a key at load time
 def test_openrouter_backward_compatibility():
     """Test that OpenRouter configs still work (backward compatibility)."""
     print("\n=== Testing OpenRouter Backward Compatibility ===")
     
-    config = Config.from_yaml("/root/AutoPrompter/config.yaml")
+    config = Config.from_yaml(os.path.join(ROOT, "config.yaml"))
     
     # Should use LLMConfig for OpenRouter backend
     assert isinstance(config.optimizer_llm, LLMConfig), "Optimizer should use LLMConfig for OpenRouter"
