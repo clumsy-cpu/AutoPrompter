@@ -223,3 +223,45 @@ def test_demo_count_requires_val_file(tmp_path):
                    "experiment: {demo_count: 2}\n")
     with pytest.raises(ValueError, match="demo_count"):
         load_config(str(cfg))
+
+
+KEEP = "<<<KEEP>>>\nWhen to Activate: always\n<<<END KEEP>>>"
+
+
+def test_protected_sections_must_survive_and_markers_never_reach_the_target(tmp_path):
+    initial = f"Intro\n{KEEP}\nAnswer briefly."
+    kept = f"Intro\n{KEEP}\nAnswer briefly and precisely."
+    system, opt, tgt = make_system(tmp_path, scripted_optimizer(["Answer briefly.", kept]),
+                                   lambda p, s: "x", TRAIN,
+                                   experiment={"max_iterations": 1}, task={"initial_prompt": initial})
+    report = system.run()
+    assert "protected section" in opt.calls[0][0]  # the rule is in every request
+    assert "changed or dropped a protected section" in opt.calls[1][0]  # the retry says why
+    tested = [target_parts(p)[0] for p, _ in tgt.calls[::len(TRAIN)]]
+    assert tested == ["Intro\nWhen to Activate: always\nAnswer briefly.",
+                      "Intro\nWhen to Activate: always\nAnswer briefly and precisely."]
+    assert report["best_prompt"] in (initial, kept)  # markers kept in the report for the next run
+    assert "<<<" not in report["final_prompt_plain"]
+
+
+def test_prompts_without_markers_have_no_rule_and_no_plain_copy(tmp_path):
+    system, opt, _ = make_system(tmp_path, scripted_optimizer(["P1"]), lambda p, s: "x", TRAIN,
+                                 experiment={"max_iterations": 1})
+    report = system.run()
+    assert "protected section" not in opt.calls[0][0]
+    assert "final_prompt_plain" not in report
+
+
+def test_strip_keep_markers():
+    from optimization_system import strip_keep_markers
+    assert strip_keep_markers(f"A\n{KEEP}\nB") == "A\nWhen to Activate: always\nB"
+    assert strip_keep_markers("x <<<KEEP>>>y<<<END KEEP>>> z") == "x y z"
+
+
+def test_protected_check_ignores_whitespace_changes(tmp_path):
+    initial = f"Intro\n{KEEP}\nAnswer."
+    reflowed = "Intro\n<<<KEEP>>> When to Activate:   always\n<<<END KEEP>>>\nAnswer well."
+    system = make_system(tmp_path, scripted_optimizer(["x"]), lambda p, s: "x", TRAIN,
+                         task={"initial_prompt": initial})[0]
+    assert system._candidate_problem(reflowed) is None
+    assert system._candidate_problem("Intro\n<<<KEEP>>>\nWhen to Activate: never\n<<<END KEEP>>>")[0] == "protected"

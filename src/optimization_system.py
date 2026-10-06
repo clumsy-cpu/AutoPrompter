@@ -6,6 +6,7 @@ Integrates all modules and manages the iterative improvement loop.
 import os
 import json
 import random
+import re
 import time
 import logging
 from typing import List, Dict, Any, Optional, Tuple
@@ -36,6 +37,19 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+
+KEEP_START, KEEP_END = "<<<KEEP>>>", "<<<END KEEP>>>"
+_KEEP_BLOCK = re.compile(re.escape(KEEP_START) + r".*?" + re.escape(KEEP_END), re.DOTALL)
+_KEEP_MARKER = "(?:" + re.escape(KEEP_START) + "|" + re.escape(KEEP_END) + ")"
+_KEEP_MARKER_LINE = re.compile(r"^[ \t]*" + _KEEP_MARKER + r"[ \t]*(?:\n|$)", re.MULTILINE)
+
+
+def strip_keep_markers(prompt: str) -> str:
+    """Remove the protected-section markers, keeping the text between them.
+
+    A marker on its own line goes with its line; an inline marker goes alone.
+    """
+    return re.sub(_KEEP_MARKER, "", _KEEP_MARKER_LINE.sub("", prompt))
 
 
 def create_llm_client(llm_config):
@@ -140,6 +154,9 @@ class PromptOptimizationSystem:
         self.demo_scores: Dict[str, Optional[float]] = {}
         self.final_prompt = config.task.initial_prompt  # best prompt plus any chosen examples
 
+        # Protected sections: blocks of the initial prompt between <<<KEEP>>> and <<<END KEEP>>>
+        self.protected_blocks: List[str] = _KEEP_BLOCK.findall(config.task.initial_prompt)
+
         # Statistical tracking for significance testing
         self.best_scores_history: List[float] = []
         self.baseline_established = False
@@ -215,6 +232,19 @@ class PromptOptimizationSystem:
         
         return entries
     
+    def _target_prompt(self, prompt: str, inp: str) -> str:
+        """What the Target model receives for one input."""
+        return f"{strip_keep_markers(prompt)}\n\nInput: {inp}\n\nOutput:"
+
+    def _standing_rules(self) -> str:
+        """Rules repeated to the Optimizer with every request."""
+        rules = []
+        if self.protected_blocks:
+            rules.append(f"The prompt contains {len(self.protected_blocks)} protected section(s) between "
+                         f"{KEEP_START} and {KEEP_END}. Copy each one into your new prompt exactly, "
+                         f"markers included. Proposals that change or drop them are refused.")
+        return "\n".join(f"📌 {rule}" for rule in rules)
+
     def run_experiment(self, prompt: str, 
                        test_entries: List[DatasetEntry]) -> Experiment:
         """Run a single experiment with the given prompt."""
@@ -229,7 +259,7 @@ class PromptOptimizationSystem:
         # Query target LLM
         actual_outputs = []
         for inp in inputs:
-            full_prompt = f"{prompt}\n\nInput: {inp}\n\nOutput:"
+            full_prompt = self._target_prompt(prompt, inp)
             logger.info(f"Current prompt: {full_prompt}\n")
             response = self.target_llm.query(full_prompt)
             
@@ -279,7 +309,7 @@ class PromptOptimizationSystem:
         # Query target LLM
         actual_outputs = []
         for inp in inputs:
-            full_prompt = f"{prompt}\n\nInput: {inp}\n\nOutput:"
+            full_prompt = self._target_prompt(prompt, inp)
             response = self.target_llm.query(full_prompt)
             
             if response.success and response.content:
@@ -619,6 +649,10 @@ class PromptOptimizationSystem:
         if "final answer" in all_expected.lower() and "final answer" not in all_actual.lower():
             feedback_parts.append("  ⚠️ Expected outputs use 'Final Answer:' marker but actual outputs don't")
             feedback_parts.append("  💡 RECOMMENDATION: Add explicit instruction: End your response with Final Answer: [your answer]")
+
+        rules = self._standing_rules()
+        if rules:
+            feedback_parts.append(f"\n{rules}")
         
         return "\n".join(feedback_parts)
 
@@ -689,6 +723,8 @@ class PromptOptimizationSystem:
             report['val_without_demos'] = self.demo_scores['without']
             report['val_with_demos'] = self.demo_scores['with']
         report['final_prompt'] = self.final_prompt  # best_prompt plus the chosen examples, if any
+        if self.protected_blocks:
+            report['final_prompt_plain'] = strip_keep_markers(self.final_prompt)  # what the Target receives
         if self.test_scores:
             report['test_initial'] = self.test_scores['initial']
             report['test_best'] = self.test_scores['best']
@@ -814,6 +850,13 @@ class PromptOptimizationSystem:
                 return ('label_leak', "Your last proposal was refused because it contained specific answers "
                                       "from the evaluation data. The prompt must explain how to find or form "
                                       "an answer; it must never list answers.")
+        flat = " ".join(prompt.split())  # whitespace changes do not count as edits
+        missing = [block for block in self.protected_blocks if " ".join(block.split()) not in flat]
+        if missing:
+            logger.warning(f"Proposal changed or dropped {len(missing)} protected section(s)")
+            return ('protected', f"Your last proposal was refused because it changed or dropped a protected "
+                                 f"section. Copy every block between {KEEP_START} and {KEEP_END} exactly, "
+                                 f"markers included.")
         return None
 
     def _next_candidate(self) -> Tuple[Optional[str], bool]:
