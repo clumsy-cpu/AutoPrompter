@@ -292,3 +292,33 @@ def test_missing_context_file_fails_at_config_load(tmp_path):
                    f"task: {{context_files: [{tmp_path / 'nope.md'}]}}\n")
     with pytest.raises(ValueError, match="nope.md"):
         load_config(str(cfg))
+
+
+def flaky_target(fail_on):
+    """Target that fails (client error after retries) on the given inputs, answers 'x' otherwise."""
+    return lambda full_prompt, system_message: None if target_parts(full_prompt)[1] in fail_on else "x"
+
+
+def test_failed_call_scores_zero_by_default(tmp_path):
+    report = make_system(tmp_path, scripted_optimizer(["P1"]), flaky_target({"q1"}), TRAIN,
+                         experiment={"max_iterations": 1})[0].run()
+    assert report["status"] == "success"
+
+
+def test_stop_on_failed_call_stops_and_saves_the_ledger(tmp_path):
+    system, opt, tgt = make_system(tmp_path, scripted_optimizer(["P1"]), flaky_target({"q3"}), TRAIN,
+                                   experiment={"max_iterations": 1, "stop_on_failed_call": True})
+    report = system.run()
+    assert report["status"] == "failed" and "'q3'" in report["reason"]
+    assert len(tgt.calls) == 3  # stopped at the failing call, no zero score recorded
+    assert os.path.exists(tmp_path / "ledger.json")
+
+
+def test_stop_on_failed_call_reaches_through_parallel_candidates(tmp_path):
+    def target(full_prompt, system_message):  # the baseline works, every candidate fails
+        return "x" if target_parts(full_prompt)[0] == "P0" else None
+    system = make_system(tmp_path, BATCH, target, TRAIN,
+                         experiment={"max_iterations": 1, "stop_on_failed_call": True, "candidates_per_step": 3,
+                                     "parallel_enabled": True})[0]
+    report = system.run()
+    assert report["status"] == "failed" and "Target call failed" in report["reason"]

@@ -248,6 +248,7 @@ The keys below separate learning from selection. All are off by default; old con
 | `experiment.demo_count: 3` | After the loop, try `demo_trials` random sets of train examples in an `Examples:` block after the best prompt; keep a set only if it beats the prompt alone on val. Needs `storage.val_file`. |
 | `<<<KEEP>>>` … `<<<END KEEP>>>` in `task.initial_prompt` | Protected section: a proposal that changes or drops it is refused. The markers are stripped from what the Target receives. |
 | `task.context_files: [a.md, b.md]` | Files given to the Target before the prompt as reference material. The Optimizer sees only their names, so it has no facts to copy into the prompt. |
+| `experiment.stop_on_failed_call: true` | A Target call that still fails after the client's retries (network outage, CLI error) stops the run with status `failed`, instead of counting as an empty answer that scores 0. The ledger is saved. |
 
 Use datasets with labels the Optimizer did not write (an Optimizer-generated dataset is reported as
 self-graded). `scripts/split_dataset.py` splits one JSON file into disjoint train/val/test files:

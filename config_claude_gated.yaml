@@ -26,6 +26,7 @@ experiment:
   demo_count: 3            # then try 3 train examples after the best prompt, kept only if val improves
   demo_trials: 4
   seed: 0
+  stop_on_failed_call: true # a call that fails after retries stops the run instead of scoring 0
 
 task:
   name: "skill_qa"

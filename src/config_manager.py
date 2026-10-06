@@ -110,6 +110,7 @@ class ExperimentConfig:
     demo_count: int = 0  # >0: after the loop, try adding this many train examples to the best prompt (needs storage.val_file)
     demo_trials: int = 4  # random example sets tried; one is kept only if it beats the prompt alone on val
     seed: int = 0  # seed for the example sets
+    stop_on_failed_call: bool = False  # True: a Target call that fails after retries stops the run instead of scoring 0
 
 
 @dataclass
