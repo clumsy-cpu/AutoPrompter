@@ -1,9 +1,65 @@
 [
   {
-    "input": "Which frontmatter key holds the GitHub URL for instincts imported from Skill Creator?",
-    "expected_output": "source_repo",
+    "input": "Which user32.dll function is called via PowerShell to detect idle time on Windows?",
+    "expected_output": "GetLastInputInfo",
     "metadata": {
-      "source": "agents/observer.md"
+      "source": "agents/session-guardian.sh"
+    }
+  },
+  {
+    "input": "Which environment variable does observe.sh check to determine the hook phase when no positional argument is passed?",
+    "expected_output": "CLAUDE_HOOK_EVENT_NAME",
+    "metadata": {
+      "source": "hooks/observe.sh"
+    }
+  },
+  {
+    "input": "Which registry field is preserved from an existing entry rather than updated to now?",
+    "expected_output": "created_at",
+    "metadata": {
+      "source": "scripts/instinct-cli.py"
+    }
+  },
+  {
+    "input": "Which environment variable sets the user idle threshold for the idle-detection gate?",
+    "expected_output": "OBSERVER_MAX_IDLE_SECONDS",
+    "metadata": {
+      "source": "agents/session-guardian.sh"
+    }
+  },
+  {
+    "input": "Which field in the hook stdin JSON, when non-empty, marks a subagent session that observe.sh skips?",
+    "expected_output": "agent_id",
+    "metadata": {
+      "source": "hooks/observe.sh"
+    }
+  },
+  {
+    "input": "What source_hint value is set when CLAUDE_PROJECT_DIR points to a non-git directory?",
+    "expected_output": "env-nogit",
+    "metadata": {
+      "source": "scripts/detect-project.sh"
+    }
+  },
+  {
+    "input": "Which lock mode constant is passed to flock when acquiring the registry lock?",
+    "expected_output": "LOCK_EX",
+    "metadata": {
+      "source": "scripts/instinct-cli.py"
+    }
+  },
+  {
+    "input": "Which frontmatter key stores the originating project ID when a specific instinct is promoted?",
+    "expected_output": "promoted_from",
+    "metadata": {
+      "source": "scripts/instinct-cli.py"
+    }
+  },
+  {
+    "input": "Which function parses git worktree list --porcelain to find the main worktree path?",
+    "expected_output": "_clv2_main_worktree_root",
+    "metadata": {
+      "source": "scripts/detect-project.sh"
     }
   },
   {
@@ -14,127 +70,8 @@
     }
   },
   {
-    "input": "What similarity metric does keyword clustering use instead of Jaccard?",
-    "expected_output": "Overlap coefficient",
-    "metadata": {
-      "source": "scripts/instinct-cli.py"
-    }
-  },
-  {
-    "input": "Which environment variable controls how long the observer loop stays alive while idle without session leases?",
-    "expected_output": "ECC_OBSERVER_IDLE_TIMEOUT_SECONDS",
-    "metadata": {
-      "source": "agents/observer-loop.sh"
-    }
-  },
-  {
-    "input": "What function name in session-guardian returns idle seconds per platform?",
-    "expected_output": "get_idle_seconds",
-    "metadata": {
-      "source": "agents/session-guardian.sh"
-    }
-  },
-  {
-    "input": "What event value does observe.sh record when the hook phase is pre?",
-    "expected_output": "tool_start",
-    "metadata": {
-      "source": "hooks/observe.sh"
-    }
-  },
-  {
-    "input": "Which command does observe.sh try as a macOS fallback when flock is unavailable for the lazy-start lock?",
-    "expected_output": "lockfile",
-    "metadata": {
-      "source": "hooks/observe.sh"
-    }
-  },
-  {
-    "input": "What value is written to the source field of instincts written by auto-promotion?",
-    "expected_output": "auto-promoted",
-    "metadata": {
-      "source": "scripts/instinct-cli.py"
-    }
-  },
-  {
-    "input": "Which environment variable overrides the path of the per-project last-run log used by session-guardian?",
-    "expected_output": "OBSERVER_LAST_RUN_LOG",
-    "metadata": {
-      "source": "agents/session-guardian.sh"
-    }
-  },
-  {
-    "input": "Which instinct-cli.py subcommand does the observer loop run at startup before analysis?",
-    "expected_output": "prune",
-    "metadata": {
-      "source": "agents/observer-loop.sh"
-    }
-  },
-  {
-    "input": "Which flag is passed to 'git worktree list' when resolving the main worktree root?",
-    "expected_output": "--porcelain",
-    "metadata": {
-      "source": "scripts/instinct-cli.py"
-    }
-  },
-  {
-    "input": "What is the name of the subdirectory under instincts that holds instincts subject to TTL pruning?",
-    "expected_output": "pending",
-    "metadata": {
-      "source": "scripts/instinct-cli.py"
-    }
-  },
-  {
-    "input": "Which frontmatter key records the original source path or URL in an imported instincts file?",
-    "expected_output": "imported_from",
-    "metadata": {
-      "source": "scripts/instinct-cli.py"
-    }
-  },
-  {
-    "input": "What is the name of the project-scoped PID file created for each observer?",
-    "expected_output": ".observer.pid",
-    "metadata": {
-      "source": "agents/start-observer.sh"
-    }
-  },
-  {
-    "input": "Which signal does the Python writer in observe.sh arm with an 8-second alarm to self-terminate?",
-    "expected_output": "SIGALRM",
-    "metadata": {
-      "source": "hooks/observe.sh"
-    }
-  },
-  {
-    "input": "Which environment variable does observe.sh export as 1 when the hook's cwd is not inside a git repository?",
-    "expected_output": "CLV2_NO_PROJECT",
-    "metadata": {
-      "source": "hooks/observe.sh"
-    }
-  },
-  {
-    "input": "Which registry field is refreshed with the current UTC time on every detection?",
-    "expected_output": "last_seen",
-    "metadata": {
-      "source": "scripts/detect-project.sh"
-    }
-  },
-  {
-    "input": "Which hashlib algorithm is used to derive the 12-character project ID?",
-    "expected_output": "sha256",
-    "metadata": {
-      "source": "scripts/instinct-cli.py"
-    }
-  },
-  {
-    "input": "What constant requires at least two shared keywords before triggers are clustered together?",
-    "expected_output": "TRIGGER_MIN_SHARED_KEYWORDS",
-    "metadata": {
-      "source": "scripts/instinct-cli.py"
-    }
-  },
-  {
-    "input": "Which environment variable overrides the auto-scaled --max-turns value?",
-    "expected_output": "ECC_OBSERVER_MAX_TURNS",
+    "input": "What temporary directory name inside PROJECT_DIR holds the sampled analysis and prompt files?",
+    "expected_output": ".observer-tmp",
     "metadata": {
       "source": "agents/observer-loop.sh"
     }
@@ -147,52 +84,73 @@
     }
   },
   {
-    "input": "Which environment variable is set to 1 to stop observe.sh from recording the observer's own Claude session?",
-    "expected_output": "ECC_SKIP_OBSERVE",
-    "metadata": {
-      "source": "agents/observer-loop.sh"
-    }
-  },
-  {
-    "input": "What is the name of the marker file in the config directory whose presence makes observe.sh exit immediately?",
-    "expected_output": "disabled",
+    "input": "Which CLAUDE_CODE_ENTRYPOINT value for the VS Code integration is allowed through the Layer 1 guard in observe.sh?",
+    "expected_output": "claude-vscode",
     "metadata": {
       "source": "hooks/observe.sh"
     }
   },
   {
-    "input": "Which ioreg property is parsed on macOS to compute idle seconds?",
-    "expected_output": "HIDIdleTime",
+    "input": "Which instinct-cli.py subcommand does the observer loop run at startup before analysis?",
+    "expected_output": "prune",
     "metadata": {
-      "source": "agents/session-guardian.sh"
+      "source": "agents/observer-loop.sh"
     }
   },
   {
-    "input": "Which command does the migration script use to check for a running observer, warning when it is unavailable?",
-    "expected_output": "pgrep",
-    "metadata": {
-      "source": "scripts/migrate-homunculus.sh"
-    }
-  },
-  {
-    "input": "Which function lowercases and strips credentials and the .git suffix from remote URLs before hashing?",
-    "expected_output": "_clv2_normalize_remote_url",
-    "metadata": {
-      "source": "scripts/detect-project.sh"
-    }
-  },
-  {
-    "input": "What source value do instincts imported from Skill Creator repo analysis carry?",
-    "expected_output": "repo-analysis",
-    "metadata": {
-      "source": "agents/observer.md"
-    }
-  },
-  {
-    "input": "What banner text is printed when files are found in the legacy data directory?",
-    "expected_output": "LEGACY DATA DETECTED",
+    "input": "What name is used as the output file prefix when instincts are imported from an http(s) URL?",
+    "expected_output": "web-import",
     "metadata": {
       "source": "scripts/instinct-cli.py"
+    }
+  },
+  {
+    "input": "What is the name of the project-scoped PID file created for each observer?",
+    "expected_output": ".observer.pid",
+    "metadata": {
+      "source": "agents/start-observer.sh"
+    }
+  },
+  {
+    "input": "Which environment variable sets the watchdog timeout for the Claude analysis subprocess?",
+    "expected_output": "ECC_OBSERVER_TIMEOUT_SECONDS",
+    "metadata": {
+      "source": "agents/observer-loop.sh"
+    }
+  },
+  {
+    "input": "Which evolve flag caps how many candidates of each kind are generated?",
+    "expected_output": "--limit",
+    "metadata": {
+      "source": "scripts/instinct-cli.py"
+    }
+  },
+  {
+    "input": "What executable name does observe.sh look for to detect and skip the Windows App Execution Alias Python stub?",
+    "expected_output": "AppInstallerPythonRedirector.exe",
+    "metadata": {
+      "source": "hooks/observe.sh"
+    }
+  },
+  {
+    "input": "What comma-separated tool list is passed to --allowedTools for the analysis run?",
+    "expected_output": "Read,Write",
+    "metadata": {
+      "source": "agents/observer-loop.sh"
+    }
+  },
+  {
+    "input": "Which flag is passed to 'git worktree list' when resolving the main worktree root?",
+    "expected_output": "--porcelain",
+    "metadata": {
+      "source": "scripts/instinct-cli.py"
+    }
+  },
+  {
+    "input": "Which Linux utility does session-guardian use to measure user idle time?",
+    "expected_output": "xprintidle",
+    "metadata": {
+      "source": "agents/session-guardian.sh"
     }
   },
   {
@@ -203,6 +161,55 @@
     }
   },
   {
+    "input": "What event value is written when observe.sh fails to parse the hook input JSON?",
+    "expected_output": "parse_error",
+    "metadata": {
+      "source": "hooks/observe.sh"
+    }
+  },
+  {
+    "input": "Which process script name, if found running, makes the migration script refuse to migrate?",
+    "expected_output": "observer-loop.sh",
+    "metadata": {
+      "source": "scripts/migrate-homunculus.sh"
+    }
+  },
+  {
+    "input": "What is the name of the marker file in the config directory whose presence makes observe.sh exit immediately?",
+    "expected_output": "disabled",
+    "metadata": {
+      "source": "hooks/observe.sh"
+    }
+  },
+  {
+    "input": "Which environment variable sets how many observations pass between observer signals?",
+    "expected_output": "ECC_OBSERVER_SIGNAL_EVERY_N",
+    "metadata": {
+      "source": "hooks/observe.sh"
+    }
+  },
+  {
+    "input": "Which command does the migration script use to check for a running observer, warning when it is unavailable?",
+    "expected_output": "pgrep",
+    "metadata": {
+      "source": "scripts/migrate-homunculus.sh"
+    }
+  },
+  {
+    "input": "Which helper removes user:password@ credentials from a remote URL via regex?",
+    "expected_output": "_strip_remote_credentials",
+    "metadata": {
+      "source": "scripts/instinct-cli.py"
+    }
+  },
+  {
+    "input": "Which environment variable overrides the path of the observer's guard sentinel file?",
+    "expected_output": "CLV2_OBSERVER_SENTINEL_FILE",
+    "metadata": {
+      "source": "agents/start-observer.sh"
+    }
+  },
+  {
     "input": "Which environment variable sets the minimum seconds between observer analyses?",
     "expected_output": "ECC_OBSERVER_ANALYSIS_COOLDOWN",
     "metadata": {
@@ -210,15 +217,15 @@
     }
   },
   {
-    "input": "Which environment variable is unset at the top of the observer loop script?",
-    "expected_output": "CLAUDECODE",
+    "input": "What is the name of the function that increments the signal counter under a lock in observe.sh?",
+    "expected_output": "_clv2_bump_signal_counter",
     "metadata": {
-      "source": "agents/observer-loop.sh"
+      "source": "hooks/observe.sh"
     }
   },
   {
-    "input": "Which field in the hook stdin JSON, when non-empty, marks a subagent session that observe.sh skips?",
-    "expected_output": "agent_id",
+    "input": "To which log file does observe.sh append the output of a lazy observer start?",
+    "expected_output": "observer-start.log",
     "metadata": {
       "source": "hooks/observe.sh"
     }
