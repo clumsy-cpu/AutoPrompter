@@ -56,9 +56,9 @@ The system is configured via YAML files. Key fields include:
 
 - `optimizer_llm`: Model ID and parameters for the optimizer.
 - `target_llm`: Model ID and parameters for the target.
-- `experiment`: `max_iterations`, `batch_size`, and convergence thresholds. Set `reuse_dataset: true` to test on your own saved `storage.dataset_file` (a JSON list of `{input, expected_output}`; the first `batch_size` entries are used). By default every run generates a fresh dataset.
+- `experiment`: `max_iterations` (number of new prompts proposed after the baseline), `batch_size`, and convergence thresholds. Set `reuse_dataset: true` to test on your own saved `storage.dataset_file` (a JSON list of `{input, expected_output}`; the first `batch_size` entries are used). By default every run generates a fresh dataset.
 - `task`: `name`, `description`, and `initial_prompt`.
-- `metric`: `type` (e.g., `accuracy`, `semantic_similarity`) and `target_score`.
+- `metric`: `type` (e.g., `accuracy`, `semantic_similarity`, `strict_contains`) and `target_score`.
 - `storage`: Paths for the ledger, dataset, and results.
 
 ### Supported Backends
@@ -228,6 +228,38 @@ You can override configuration values directly from the CLI:
 ```bash
 python main.py --config config.yaml --max-iterations 50 --override experiment.batch_size=10
 ```
+
+## Honest Evaluation (opt-in)
+
+By default the loop shows the Optimizer the expected answers of failing items, adopts every new
+prompt, and picks the best prompt on the same items it learned from. A capable Optimizer can then
+paste the answers into the prompt: the score reaches 1.0 and nothing carries over to new questions.
+The keys below separate learning from selection. All are off by default; old configs run as before.
+
+| Key | What it does |
+|---|---|
+| `experiment.acceptance: val` | A new prompt is kept only if it does not lose on train and beats the current prompt on `storage.val_file`. Otherwise it is rejected, the prompt reverts, and the Optimizer sees the attempt marked REJECTED. Val items never reach the Optimizer. Needs `storage.val_file` and `storage.test_file`. |
+| `experiment.val_significance: true` | Also require a statistically significant val improvement. |
+| `storage.test_file` | Scored once at the end for the initial and final prompts (`test_initial`, `test_best` in the report). Never used for decisions. |
+| `experiment.hide_expected: true` | The Optimizer never sees expected outputs (feedback and history). |
+| `experiment.label_guard: true` | A proposal that contains a train or val expected output is refused before testing; the Optimizer is asked once more. Labels under 4 characters and labels the initial prompt already names (class names) are not guarded. |
+| `metric.type: strict_contains` | 1.0 only if the expected text appears as whole words in the answer. No partial credit, no number fallback; refusals ("not documented", "I don't know") score 0. |
+| `experiment.candidates_per_step: 4` | Propose up to 5 prompts per iteration (one per strategy), score all on train, send the leader on to the decision. |
+| `experiment.demo_count: 3` | After the loop, try `demo_trials` random sets of train examples in an `Examples:` block after the best prompt; keep a set only if it beats the prompt alone on val. Needs `storage.val_file`. |
+| `<<<KEEP>>>` … `<<<END KEEP>>>` in `task.initial_prompt` | Protected section: a proposal that changes or drops it is refused. The markers are stripped from what the Target receives. |
+| `task.context_files: [a.md, b.md]` | Files given to the Target before the prompt as reference material. The Optimizer sees only their names, so it has no facts to copy into the prompt. |
+
+Use datasets with labels the Optimizer did not write (an Optimizer-generated dataset is reported as
+self-graded). `scripts/split_dataset.py` splits one JSON file into disjoint train/val/test files:
+
+```bash
+python3 scripts/split_dataset.py grounded.json --out-dir data/ --val 30 --test 30
+python main.py --config config_claude_gated.yaml
+```
+
+The report adds `val_initial`, `val_best`, `accepted`, `rejected`, `rejection_reasons`,
+`skipped_proposals`, `final_prompt` (best prompt plus any examples) and `warnings` (small sets,
+self-graded data). Val and test sets under 30 items are flagged: one item moves the score by 0.03 or more.
 
 ## Recent Enhancements
 

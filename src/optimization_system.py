@@ -5,6 +5,8 @@ Integrates all modules and manages the iterative improvement loop.
 
 import os
 import json
+import random
+import re
 import time
 import logging
 from typing import List, Dict, Any, Optional, Tuple
@@ -23,6 +25,7 @@ from metrics import MetricsEvaluator, MetricDefinition
 from context_manager import ContextManager
 from prompt_optimizer import PromptOptimizer
 from robustness_tester import RobustnessTester, RobustnessResult
+from label_guard import guarded_labels, find_leaked_labels
 
 # Configure logging
 logging.basicConfig(
@@ -34,6 +37,19 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+
+KEEP_START, KEEP_END = "<<<KEEP>>>", "<<<END KEEP>>>"
+_KEEP_BLOCK = re.compile(re.escape(KEEP_START) + r".*?" + re.escape(KEEP_END), re.DOTALL)
+_KEEP_MARKER = "(?:" + re.escape(KEEP_START) + "|" + re.escape(KEEP_END) + ")"
+_KEEP_MARKER_LINE = re.compile(r"^[ \t]*" + _KEEP_MARKER + r"[ \t]*(?:\n|$)", re.MULTILINE)
+
+
+def strip_keep_markers(prompt: str) -> str:
+    """Remove the protected-section markers, keeping the text between them.
+
+    A marker on its own line goes with its line; an inline marker goes alone.
+    """
+    return re.sub(_KEEP_MARKER, "", _KEEP_MARKER_LINE.sub("", prompt))
 
 
 def create_llm_client(llm_config):
@@ -108,6 +124,43 @@ class PromptOptimizationSystem:
         self.raw_best_score = 0.0                           # Used for UI display
         self.iteration = 0
         self.dataset: List[DatasetEntry] = []
+        self.baseline_experiment: Optional[Experiment] = None
+        self.last_experiment: Optional[Experiment] = None  # feedback source for the next proposal
+        self.run_scores: List[float] = []  # mean train score of each experiment in this run
+
+        # Validation-gated acceptance (experiment.acceptance = 'val')
+        self.gated = getattr(config.experiment, 'acceptance', 'always') == 'val'
+        self.val_set: List[DatasetEntry] = []
+        self.test_set: List[DatasetEntry] = []
+        self.incumbent_train: Optional[Experiment] = None  # train result of the accepted prompt
+        self.incumbent_val: Optional[Experiment] = None  # val result of the accepted prompt
+        self.val_initial: Optional[float] = None
+        self.gate_stats: Dict[str, Any] = {'accepted': 0, 'rejected': 0, 'reasons': {}}
+        self.test_scores: Dict[str, float] = {}
+        self.warnings: List[str] = []  # copied into the report
+
+        # Keeping labels away from the Optimizer
+        self.hide_expected = getattr(config.experiment, 'hide_expected', False)
+        self.label_guard = getattr(config.experiment, 'label_guard', False)
+        self.guard_labels: List[str] = []
+        self.guard_stats: Dict[str, int] = {}  # proposals dropped before testing, by reason
+
+        # Several proposals per iteration (experiment.candidates_per_step > 1)
+        self.candidates_per_step = getattr(config.experiment, 'candidates_per_step', 1)
+        if self.candidates_per_step > 5:
+            logger.warning(f"candidates_per_step={self.candidates_per_step} capped at 5 (one per proposal strategy)")
+
+        # Few-shot examples chosen on val after the loop (experiment.demo_count > 0)
+        self.demos: List[DatasetEntry] = []
+        self.demo_scores: Dict[str, Optional[float]] = {}
+        self.final_prompt = config.task.initial_prompt  # best prompt plus any chosen examples
+
+        # Protected sections: blocks of the initial prompt between <<<KEEP>>> and <<<END KEEP>>>
+        self.protected_blocks: List[str] = _KEEP_BLOCK.findall(config.task.initial_prompt)
+
+        # Reference material for the Target (task.context_files), loaded by run()
+        self.context_files: List[str] = list(getattr(config.task, 'context_files', None) or [])
+        self.reference_block = ""
 
         # Statistical tracking for significance testing
         self.best_scores_history: List[float] = []
@@ -166,6 +219,12 @@ class PromptOptimizationSystem:
         if not entries:
             logger.error("Failed to generate dataset")
             return []
+
+        warning = ("Self-graded dataset: the Optimizer wrote these inputs and expected outputs from "
+                   "task.description, so scores measure agreement with its own answers. For independent "
+                   "labels, build a dataset from ground truth and load it with experiment.reuse_dataset.")
+        logger.warning(warning)
+        self.warnings.append(warning)
         
         # Validate dataset
         is_valid, message = self.dataset_generator.validate_dataset(entries)
@@ -184,6 +243,35 @@ class PromptOptimizationSystem:
         
         return entries
     
+    def _target_prompt(self, prompt: str, inp: str) -> str:
+        """What the Target model receives for one input: reference material, prompt, input."""
+        return f"{self.reference_block}{strip_keep_markers(prompt)}\n\nInput: {inp}\n\nOutput:"
+
+    def _load_reference_block(self):
+        """Read task.context_files into the block that precedes every Target prompt."""
+        parts = []
+        for path in self.context_files:
+            with open(path, 'r') as f:
+                parts.append(f"### {os.path.basename(path)}\n{f.read().strip()}")
+        self.reference_block = ("Reference material (use it to answer):\n\n"
+                                + "\n\n".join(parts) + "\n\n---\n\n")
+        logger.info(f"Reference material: {len(parts)} file(s), {len(self.reference_block)} characters "
+                    f"added to every Target call")
+
+    def _standing_rules(self) -> str:
+        """Rules repeated to the Optimizer with every request."""
+        rules = []
+        if self.context_files:
+            names = ", ".join(os.path.basename(p) for p in self.context_files)
+            rules.append(f"Before the prompt, the Target model receives these reference files: {names}. "
+                         f"You cannot see or edit them. Do not copy facts into the prompt; tell the model "
+                         f"how to use the reference material to answer.")
+        if self.protected_blocks:
+            rules.append(f"The prompt contains {len(self.protected_blocks)} protected section(s) between "
+                         f"{KEEP_START} and {KEEP_END}. Copy each one into your new prompt exactly, "
+                         f"markers included. Proposals that change or drop them are refused.")
+        return "\n".join(f"📌 {rule}" for rule in rules)
+
     def run_experiment(self, prompt: str, 
                        test_entries: List[DatasetEntry]) -> Experiment:
         """Run a single experiment with the given prompt."""
@@ -198,8 +286,9 @@ class PromptOptimizationSystem:
         # Query target LLM
         actual_outputs = []
         for inp in inputs:
-            full_prompt = f"{prompt}\n\nInput: {inp}\n\nOutput:"
-            logger.info(f"Current prompt: {full_prompt}\n")
+            full_prompt = self._target_prompt(prompt, inp)
+            # Leave the reference material out of this per-call log (its size is logged once at load)
+            logger.info(f"Current prompt: {full_prompt[len(self.reference_block):]}\n")
             response = self.target_llm.query(full_prompt)
             
             if response.success and response.content:
@@ -248,7 +337,7 @@ class PromptOptimizationSystem:
         # Query target LLM
         actual_outputs = []
         for inp in inputs:
-            full_prompt = f"{prompt}\n\nInput: {inp}\n\nOutput:"
+            full_prompt = self._target_prompt(prompt, inp)
             response = self.target_llm.query(full_prompt)
             
             if response.success and response.content:
@@ -415,10 +504,10 @@ class PromptOptimizationSystem:
         # Require at least 3 consecutive iterations with minimal improvement
         improvement = current_score - previous_score
         if abs(improvement) < self.config.experiment.min_improvement:
-            # Check if we've had multiple consecutive low improvements
-            recent_experiments = self.ledger.get_all_experiments()[-3:]
-            if len(recent_experiments) >= 3:
-                scores = [exp.mean_score for exp in recent_experiments]
+            # Check if we've had multiple consecutive low improvements (this run only:
+            # the ledger also holds records loaded from earlier runs)
+            scores = self.run_scores[-3:]
+            if len(scores) >= 3:
                 max_diff = max(scores) - min(scores)
                 if max_diff < self.config.experiment.min_improvement:
                     logger.info(f"Converged: stable scores over last 3 iterations (range: {max_diff:.4f})")
@@ -554,7 +643,8 @@ class PromptOptimizationSystem:
             for i, (idx, inp, exp, act, score) in enumerate(low_score_examples[:3]):  # Show first 3
                 feedback_parts.append(f"\n  Example {i+1} (Test Case #{idx+1}):")
                 feedback_parts.append(f"    Input: {inp[:100]}...")
-                feedback_parts.append(f"    Expected format: {exp[:150]}...")
+                if not self.hide_expected:
+                    feedback_parts.append(f"    Expected format: {exp[:150]}...")
                 feedback_parts.append(f"    Actual output: {act[:150] if act else '(EMPTY)'}...")
                 
                 # Get detailed feedback for this example
@@ -570,7 +660,7 @@ class PromptOptimizationSystem:
                 feedback_parts.append(f"    Input: {inp[:80]}...")
                 # Show what's missing
                 detailed = self.metrics_evaluator.get_feedback(act, exp)
-                if detailed.get('missing_key_terms'):
+                if detailed.get('missing_key_terms') and not self.hide_expected:
                     feedback_parts.append(f"    Missing key terms: {', '.join(detailed['missing_key_terms'][:5])}")
                 if detailed.get('token_coverage'):
                     feedback_parts.append(f"    Content coverage: {detailed['token_coverage']:.1%}")
@@ -587,6 +677,10 @@ class PromptOptimizationSystem:
         if "final answer" in all_expected.lower() and "final answer" not in all_actual.lower():
             feedback_parts.append("  ⚠️ Expected outputs use 'Final Answer:' marker but actual outputs don't")
             feedback_parts.append("  💡 RECOMMENDATION: Add explicit instruction: End your response with Final Answer: [your answer]")
+
+        rules = self._standing_rules()
+        if rules:
+            feedback_parts.append(f"\n{rules}")
         
         return "\n".join(feedback_parts)
 
@@ -613,16 +707,15 @@ class PromptOptimizationSystem:
     
     def generate_summary_report(self) -> Dict[str, Any]:
         """Generate final summary report."""
-        all_experiments = self.ledger.get_all_experiments()
-        
-        if not all_experiments:
+        if self.baseline_experiment is None:
             return {
                 'status': 'failed',
                 'reason': 'No experiments completed'
             }
         
-        # Calculate improvements — use raw_best for display (highest score seen)
-        initial_score = all_experiments[0].mean_score if all_experiments else 0
+        # Calculate improvements — use raw_best for display (highest score seen).
+        # The baseline comes from this run, not from the ledger, which also holds earlier runs.
+        initial_score = self.baseline_experiment.mean_score
         final_score = self.raw_best_score  # Raw best for reporting
         improvement = final_score - initial_score
 
@@ -639,16 +732,326 @@ class PromptOptimizationSystem:
             'stat_best_prompt': self.best_prompt,         # Statistically significant best
             'initial_prompt': self.config.task.initial_prompt,
             'target_reached': self.metric_def.is_target_reached(final_score),
-            'experiments_count': len(all_experiments)
+            'experiments_count': len(self.run_scores)
         }
+        report['acceptance'] = 'val' if self.gated else 'always'
+        if self.warnings:
+            report['warnings'] = self.warnings
+        if self.gated:
+            report.update({
+                'val_initial': self.val_initial,
+                'val_best': self.incumbent_val.mean_score,
+                'accepted': self.gate_stats['accepted'],
+                'rejected': self.gate_stats['rejected'],
+                'rejection_reasons': self.gate_stats['reasons'],
+                'target_reached': self.metric_def.is_target_reached(self.incumbent_val.mean_score),
+            })
+        if self.guard_stats:
+            report['skipped_proposals'] = self.guard_stats
+        if self.demo_scores:
+            report['demos'] = [{'input': d.input, 'expected_output': d.expected_output} for d in self.demos]
+            report['val_without_demos'] = self.demo_scores['without']
+            report['val_with_demos'] = self.demo_scores['with']
+        report['final_prompt'] = self.final_prompt  # best_prompt plus the chosen examples, if any
+        if self.protected_blocks:
+            report['final_prompt_plain'] = strip_keep_markers(self.final_prompt)  # what the Target receives
+        if self.test_scores:
+            report['test_initial'] = self.test_scores['initial']
+            report['test_best'] = self.test_scores['best']
         
         return report
+
+    def _load_split(self, path: str, name: str) -> List[DatasetEntry]:
+        """Load a fixed val or test set (never generated). Empty path means no set."""
+        if not path:
+            return []
+        entries = self.dataset_generator.load_dataset(path)
+        if entries and len(entries) < 30:
+            warning = (f"{name} set has only {len(entries)} items: one item moves its score by "
+                       f"{1 / len(entries):.2f}, so small differences are noise")
+            logger.warning(warning)
+            self.warnings.append(warning)
+        return entries
+
+    def _reject(self, reason: str, detail: str):
+        self.gate_stats['rejected'] += 1
+        self.gate_stats['reasons'][reason] = self.gate_stats['reasons'].get(reason, 0) + 1
+        logger.info(f"REJECTED ({reason}): {detail}")
+
+    def _val_gate(self, experiment) -> Tuple[bool, str]:
+        """Decide whether a candidate (already scored on train) replaces the incumbent.
+
+        Cheap check first: the candidate must not lose on train. Then it must beat the
+        incumbent on the val set. Returns (accepted, status text for the Optimizer's history).
+        """
+        inc_train = self.incumbent_train.mean_score
+        if experiment.mean_score < inc_train:
+            detail = f"train {experiment.mean_score:.3f} < current {inc_train:.3f}"
+            self._reject('train', detail)
+            return False, f"REJECTED: {detail}"
+
+        val_exp = self.run_experiment(experiment.prompt, self.val_set)
+        inc_val = self.incumbent_val.mean_score
+        better = val_exp.mean_score > inc_val
+        if better and self.config.experiment.val_significance:
+            better = self._is_significant_improvement(
+                val_exp.metric_scores, self.incumbent_val.metric_scores, val_exp.mean_score, inc_val
+            )
+        if not better:
+            detail = (f"held-out score {val_exp.mean_score:.3f} did not beat current {inc_val:.3f} "
+                      f"(train {experiment.mean_score:.3f})")
+            self._reject('val', detail)
+            return False, f"REJECTED: {detail}"
+
+        self.gate_stats['accepted'] += 1
+        self.incumbent_train = experiment
+        self.incumbent_val = val_exp
+        logger.info(f"*** ACCEPTED *** held-out score {val_exp.mean_score:.3f} (was {inc_val:.3f}), "
+                    f"train {experiment.mean_score:.3f}")
+        return True, f"ACCEPTED: held-out score {val_exp.mean_score:.3f} (was {inc_val:.3f})"
+
+    def _record_context(self, experiment, improvement: float, **extra):
+        """Add an experiment to the Optimizer's history, with its first 3 sample results."""
+        exp_dict = {
+            'iteration': experiment.iteration,
+            'prompt': experiment.prompt,
+            'metric_score': experiment.mean_score,
+            'improvement': improvement,
+            'sample_results': [
+                {
+                    'input': inp,
+                    'expected': exp,
+                    'actual': act,
+                    'score': score
+                }
+                for inp, exp, act, score in zip(
+                    experiment.inputs[:3],  # Show 3 samples for better context
+                    experiment.expected_outputs[:3],
+                    experiment.actual_outputs[:3],
+                    experiment.metric_scores[:3]
+                )
+            ]
+        }
+        if self.hide_expected:
+            for result in exp_dict['sample_results']:
+                del result['expected']
+        exp_dict.update(extra)
+        self.context_manager.add_experiment(exp_dict)
+
+    def _is_known_prompt(self, prompt: str, entries: List[DatasetEntry]) -> bool:
+        """True if the ledger already has this prompt on these entries (checked before spending target calls)."""
+        probe = Experiment(
+            iteration=self.iteration,
+            prompt=prompt,
+            inputs=[e.input for e in entries],
+            expected_outputs=[e.expected_output for e in entries],
+            actual_outputs=[],
+            metric_scores=[],
+            mean_score=0.0
+        )
+        return self.ledger.is_duplicate_experiment(probe)
+
+    def _propose(self, experiment, note: str = "") -> Optional[str]:
+        """Ask the Optimizer for a new prompt, using the given experiment as feedback.
+
+        note: an extra instruction appended to the feedback (e.g. why the last proposal was refused).
+        """
+        context = self.context_manager.get_context_for_optimizer(
+            self.current_prompt, experiment.mean_score
+        )
+        feedback_summary = self._build_feedback_summary(experiment)
+        if note:
+            feedback_summary += f"\n\n⛔ {note}"
+        return self.prompt_optimizer.optimize(
+            context,
+            self.current_prompt,
+            experiment.mean_score,
+            self.config.metric.type,
+            feedback_summary
+        )
+
+    def _candidate_problem(self, prompt: str) -> Optional[Tuple[str, str]]:
+        """Why a proposal must not be tested, as (reason, note for the Optimizer), or None if it is fine."""
+        if self._is_known_prompt(prompt, self.dataset):
+            return ('duplicate', "Your last proposal was identical to a prompt that was already tested. "
+                                 "Propose a different prompt.")
+        if self.guard_labels:
+            leaked = find_leaked_labels(prompt, self.guard_labels)
+            if leaked:
+                logger.warning(f"Proposal contains {len(leaked)} expected answer(s) from the evaluation data")
+                return ('label_leak', "Your last proposal was refused because it contained specific answers "
+                                      "from the evaluation data. The prompt must explain how to find or form "
+                                      "an answer; it must never list answers.")
+        flat = " ".join(prompt.split())  # whitespace changes do not count as edits
+        missing = [block for block in self.protected_blocks if " ".join(block.split()) not in flat]
+        if missing:
+            logger.warning(f"Proposal changed or dropped {len(missing)} protected section(s)")
+            return ('protected', f"Your last proposal was refused because it changed or dropped a protected "
+                                 f"section. Copy every block between {KEEP_START} and {KEEP_END} exactly, "
+                                 f"markers included.")
+        return None
+
+    def _next_candidate(self) -> Tuple[Optional[str], bool]:
+        """Propose a prompt that passes the pre-test checks, asking once more if the first one fails.
+
+        Returns (prompt, ok). prompt None means the Optimizer failed; ok False means
+        both proposals were refused and this iteration should be skipped.
+        """
+        note = ""
+        for attempt in range(2):
+            candidate = self._propose(self.last_experiment, note)
+            if candidate is None:
+                return None, False
+            problem = self._candidate_problem(candidate)
+            if problem is None:
+                return candidate, True
+            reason, note = problem
+            logger.warning(f"Proposal refused ({reason}), "
+                           f"{'asking for another one' if attempt == 0 else 'skipping this iteration'}")
+        self.guard_stats[reason] = self.guard_stats.get(reason, 0) + 1
+        return candidate, False
     
+    def _test_single_candidate(self) -> Tuple[Optional[Experiment], bool]:
+        """Propose one prompt and score it on train. Returns (experiment or None to skip, stop)."""
+        candidate, ok = self._next_candidate()
+        if candidate is None:
+            return None, True
+        if not ok:
+            return None, False
+        self.current_prompt = candidate
+        logger.info(f"Testing prompt on {len(self.dataset)} test cases")
+
+        # Signal UI: iteration starting — show prompt being evaluated (current_score=None = pre-run)
+        if self.progress_callback:
+            self.progress_callback(self.iteration, self.raw_best_score, self.raw_best_prompt, None, self.current_prompt)
+
+        # Run experiment on the full dataset
+        experiment = self.run_experiment(self.current_prompt, self.dataset)
+        
+        # Add to ledger
+        self.ledger.add_experiment(experiment)
+        self.run_scores.append(experiment.mean_score)
+        return experiment, False
+
+    def _test_candidate_batch(self) -> Tuple[Optional[Experiment], bool]:
+        """Propose several prompts (one per strategy), score them all on train and return the leader.
+
+        Refused proposals (duplicates, label leaks) are dropped before testing. The others
+        go into the Optimizer's history marked as not selected. Returns (leader or None to skip, stop).
+        """
+        n = min(self.candidates_per_step, 5)  # generate_candidates has 5 strategies
+        context = self.context_manager.get_context_for_optimizer(
+            self.current_prompt, self.last_experiment.mean_score
+        )
+        proposals = self.prompt_optimizer.generate_candidates(
+            context, self.current_prompt, self.last_experiment.mean_score,
+            self.config.metric.type, self._build_feedback_summary(self.last_experiment), n
+        )
+        if not proposals:
+            return None, True
+
+        candidates = []
+        for prompt in dict.fromkeys(proposals):  # drop exact repeats within the batch
+            problem = self._candidate_problem(prompt)
+            if problem:
+                self.guard_stats[problem[0]] = self.guard_stats.get(problem[0], 0) + 1
+                logger.warning(f"Candidate refused ({problem[0]})")
+            else:
+                candidates.append(prompt)
+        if not candidates:
+            logger.warning("All candidates refused, skipping this iteration")
+            return None, False
+
+        logger.info(f"Testing {len(candidates)} candidates on {len(self.dataset)} test cases")
+        results = dict(self.evaluate_candidates_parallel(candidates, self.dataset))
+        experiments = [results[prompt] for prompt in candidates]  # keep proposal order for ties
+        for experiment in experiments:
+            experiment.iteration = self.iteration + 1  # same numbering as run_experiment
+            self.ledger.add_experiment(experiment)
+            self.run_scores.append(experiment.mean_score)
+
+        leader = max(experiments, key=lambda e: e.mean_score)  # first one wins a tie
+        for experiment in experiments:
+            if experiment is not leader:
+                self._record_context(experiment, experiment.mean_score - self.last_experiment.mean_score,
+                                     status=f"NOT SELECTED: train {experiment.mean_score:.3f} < "
+                                            f"best candidate {leader.mean_score:.3f}")
+        logger.info(f"Best of {len(experiments)} candidates: train {leader.mean_score:.3f}")
+        self.current_prompt = leader.prompt
+        if self.progress_callback:
+            self.progress_callback(self.iteration, self.raw_best_score, self.raw_best_prompt, None, self.current_prompt)
+        return leader, False
+
+    def _decide_gated(self, experiment) -> bool:
+        """Apply the val gate to a scored candidate and update state. Returns True to stop (target reached)."""
+        previous_train = self.incumbent_train.mean_score
+        accepted, status = self._val_gate(experiment)
+        if accepted:
+            self.best_prompt = self.raw_best_prompt = experiment.prompt
+            self.best_score = self.raw_best_score = experiment.mean_score
+            self.best_scores_history = experiment.metric_scores.copy()
+        else:
+            self.current_prompt = self.incumbent_train.prompt  # revert
+        # The Optimizer sees the attempt and its outcome; the next proposal starts from the incumbent
+        self._record_context(experiment, experiment.mean_score - previous_train, status=status)
+        self.last_experiment = self.incumbent_train
+
+        if self.progress_callback:
+            self.progress_callback(self.iteration, self.raw_best_score, self.raw_best_prompt,
+                                   experiment.mean_score, experiment.prompt)
+        if self.iteration % self.config.storage.checkpoint_interval == 0:
+            self.save_checkpoint()
+        return self.metric_def.is_target_reached(self.incumbent_val.mean_score)
+
+    @staticmethod
+    def _with_demos(prompt: str, demos: List[DatasetEntry]) -> str:
+        block = "\n\n".join(f"Input: {d.input}\nOutput: {d.expected_output}" for d in demos)
+        return f"{prompt}\n\nExamples:\n\n{block}"
+
+    def _select_demos(self):
+        """Try demo_trials random sets of train examples after the best prompt; keep the best set on val.
+
+        Examples sit in their own block, separate from the instruction the Optimizer writes,
+        and are kept only if they beat the prompt alone on val.
+        """
+        base = self.raw_best_prompt
+        if self.incumbent_val is not None and self.incumbent_val.prompt == base:
+            base_score = self.incumbent_val.mean_score
+        else:
+            base_score = self.run_experiment(base, self.val_set).mean_score
+        k = min(self.config.experiment.demo_count, len(self.dataset))
+        rng = random.Random(self.config.experiment.seed)
+        best_demos, best_score = None, base_score
+        for trial in range(self.config.experiment.demo_trials):
+            demos = rng.sample(self.dataset, k)
+            score = self.run_experiment(self._with_demos(base, demos), self.val_set).mean_score
+            logger.info(f"Example set {trial + 1}: val {score:.3f} (prompt alone: {base_score:.3f})")
+            if score > best_score:
+                best_demos, best_score = demos, score
+        self.demo_scores = {'without': base_score, 'with': best_score if best_demos else None}
+        if best_demos:
+            self.demos = best_demos
+            self.final_prompt = self._with_demos(base, best_demos)
+            logger.info(f"Keeping {k} examples: val {base_score:.3f} -> {best_score:.3f}")
+        else:
+            logger.info("No example set beat the prompt alone on val; keeping it without examples")
+
+    def _score_test_set(self):
+        """Score the initial and final prompts once on the test set (reported, never used for decisions)."""
+        initial = self.config.task.initial_prompt
+        final = self.final_prompt
+        logger.info(f"Scoring initial and final prompts on the test set ({len(self.test_set)} items)")
+        initial_score = self.run_experiment(initial, self.test_set).mean_score
+        final_score = initial_score if final == initial else self.run_experiment(final, self.test_set).mean_score
+        self.test_scores = {'initial': initial_score, 'best': final_score}
+        logger.info(f"Test score: initial {initial_score:.3f}, final {final_score:.3f}")
+
     def run(self) -> Dict[str, Any]:
         """Run the full optimization loop.
         
-        max_iterations now represents the TOTAL number of improvement experiments
-        to run, not the number of batch cycles.
+        Each iteration proposes one new prompt from the previous result, tests it on
+        the full dataset and decides whether it becomes the new best.
+        max_iterations is the number of proposals, not counting the baseline.
         """
         logger.info("=" * 60)
         logger.info("STARTING PROMPT OPTIMIZATION")
@@ -665,7 +1068,7 @@ class PromptOptimizationSystem:
                 )
                 # Update evaluator based on suggested type
                 eval_type = metric_def.get('evaluation_type', 'semantic_similarity')
-                if eval_type in ['accuracy', 'f1', 'exact_match', 'contains', 'semantic_similarity']:
+                if eval_type in ['accuracy', 'f1', 'exact_match', 'contains', 'strict_contains', 'semantic_similarity']:
                     self.metrics_evaluator = MetricsEvaluator(eval_type)
                     logger.info(f"Using {eval_type} evaluator for custom metric")
             else:
@@ -676,6 +1079,21 @@ class PromptOptimizationSystem:
         if not self.dataset:
             logger.error("Cannot proceed without dataset")
             return {'status': 'failed', 'reason': 'No dataset'}
+        
+        self.val_set = self._load_split(self.config.storage.val_file, "Val")
+        self.test_set = self._load_split(self.config.storage.test_file, "Test")
+        if self.gated and not self.val_set:
+            logger.error("experiment.acceptance=val needs a non-empty storage.val_file")
+            return {'status': 'failed', 'reason': 'No val set'}
+        
+        if self.context_files:
+            self._load_reference_block()
+        
+        if self.label_guard:
+            labels = [e.expected_output for e in self.dataset + self.val_set]
+            self.guard_labels = guarded_labels(labels, self.config.task.initial_prompt)
+            logger.info(f"Label guard on: {len(self.guard_labels)} of {len(set(labels))} distinct "
+                        f"expected outputs are guarded")
         
         # Use the full dataset for each experiment (batch_size = dataset size)
         # This ensures each experiment tests on all test cases
@@ -693,33 +1111,21 @@ class PromptOptimizationSystem:
         self.raw_best_prompt = self.best_prompt
         self.baseline_established = True
         self.best_scores_history = baseline_experiment.metric_scores.copy()
+        self.baseline_experiment = baseline_experiment
+        self.last_experiment = baseline_experiment
+        self.run_scores = [baseline_experiment.mean_score]
         
         # Add baseline to ledger
         self.ledger.add_experiment(baseline_experiment)
         
         # Add to context manager
-        baseline_exp_dict = {
-            'iteration': 0,
-            'prompt': baseline_experiment.prompt,
-            'metric_score': baseline_experiment.mean_score,
-            'improvement': 0.0,
-            'is_baseline': True,
-            'sample_results': [
-                {
-                    'input': inp,
-                    'expected': exp,
-                    'actual': act,
-                    'score': score
-                }
-                for inp, exp, act, score in zip(
-                    baseline_experiment.inputs[:3],
-                    baseline_experiment.expected_outputs[:3],
-                    baseline_experiment.actual_outputs[:3],
-                    baseline_experiment.metric_scores[:3]
-                )
-            ]
-        }
-        self.context_manager.add_experiment(baseline_exp_dict)
+        self._record_context(baseline_experiment, 0.0, iteration=0, is_baseline=True)
+        
+        if self.gated:
+            self.incumbent_train = baseline_experiment
+            self.incumbent_val = self.run_experiment(self.best_prompt, self.val_set)
+            self.val_initial = self.incumbent_val.mean_score
+            logger.info(f"Baseline held-out (val) score: {self.val_initial:.3f}")
         
         logger.info(f"*** BASELINE ESTABLISHED *** Score: {self.best_score:.3f}")
         baseline_preview = self.best_prompt[:300].replace('\n', ' ↵ ')
@@ -733,44 +1139,29 @@ class PromptOptimizationSystem:
         # Start optimization from baseline
         previous_score = self.best_score
         
-        # max_iterations is now the TOTAL number of experiments to run
-        # Each iteration = one prompt tested on full dataset
         while self.iteration < self.config.experiment.max_iterations:
             self.iteration += 1
             
             logger.info(f"\n{'='*60}")
             logger.info(f"EXPERIMENT {self.iteration}/{self.config.experiment.max_iterations}")
             logger.info(f"{'='*60}")
-            logger.info(f"Testing prompt on {len(self.dataset)} test cases")
 
-            # Signal UI: iteration starting — show prompt being evaluated (current_score=None = pre-run)
-            if self.progress_callback:
-                self.progress_callback(self.iteration, self.raw_best_score, self.raw_best_prompt, None, self.current_prompt)
-
-            # Use full dataset for each experiment
-            test_batch = self.dataset
-
-            # Run experiment
-            experiment = self.run_experiment(self.current_prompt, test_batch)
-            
-            # Check for duplicates (same prompt tested on same inputs)
-            if self.ledger.is_duplicate_experiment(experiment):
-                logger.warning("Duplicate experiment detected, generating new prompt...")
-                # Force generation of a different prompt
-                context = self.context_manager.get_context_for_optimizer(
-                    self.current_prompt, experiment.mean_score
-                )
-                improved_prompt = self.prompt_optimizer.optimize(
-                    context, self.current_prompt, experiment.mean_score,
-                    self.config.metric.type
-                )
-                if improved_prompt and improved_prompt != self.current_prompt:
-                    self.current_prompt = improved_prompt
-                    logger.info("Generated alternative prompt to avoid duplicate")
+            # Propose a new prompt from the previous result's feedback
+            if self.candidates_per_step > 1:
+                experiment, stop = self._test_candidate_batch()
+            else:
+                experiment, stop = self._test_single_candidate()
+            if stop:
+                logger.error("Failed to generate improved prompt, stopping")
+                break
+            if experiment is None:
                 continue
-            
-            # Add to ledger
-            self.ledger.add_experiment(experiment)
+
+            if self.gated:
+                if self._decide_gated(experiment):
+                    logger.info("Target score reached on the val set, stopping optimization")
+                    break
+                continue
             
             # Update best if improved (with statistical significance testing)
             current_score = experiment.mean_score
@@ -807,53 +1198,12 @@ class PromptOptimizationSystem:
                 self.progress_callback(self.iteration, self.raw_best_score, self.raw_best_prompt, current_score, self.current_prompt)
             
             # Add to context manager
-            exp_dict = {
-                'iteration': experiment.iteration,
-                'prompt': experiment.prompt,
-                'metric_score': experiment.mean_score,
-                'improvement': current_score - previous_score,
-                'sample_results': [
-                    {
-                        'input': inp,
-                        'expected': exp,
-                        'actual': act,
-                        'score': score
-                    }
-                    for inp, exp, act, score in zip(
-                        experiment.inputs[:3],  # Show 3 samples for better context
-                        experiment.expected_outputs[:3],
-                        experiment.actual_outputs[:3],
-                        experiment.metric_scores[:3]
-                    )
-                ]
-            }
-            self.context_manager.add_experiment(exp_dict)
+            self._record_context(experiment, current_score - previous_score)
+            self.last_experiment = experiment
             
             # Check convergence
             if self.check_convergence(current_score, previous_score):
                 logger.info("Convergence criteria met, stopping optimization")
-                break
-            
-            # Generate improved prompt with detailed feedback
-            context = self.context_manager.get_context_for_optimizer(
-                self.current_prompt, current_score
-            )
-            
-            # Build detailed feedback summary from the experiment results
-            feedback_summary = self._build_feedback_summary(experiment)
-            
-            improved_prompt = self.prompt_optimizer.optimize(
-                context,
-                self.current_prompt,
-                current_score,
-                self.config.metric.type,
-                feedback_summary
-            )
-            
-            if improved_prompt:
-                self.current_prompt = improved_prompt
-            else:
-                logger.error("Failed to generate improved prompt, stopping")
                 break
             
             previous_score = current_score
@@ -862,6 +1212,15 @@ class PromptOptimizationSystem:
             if self.iteration % self.config.storage.checkpoint_interval == 0:
                 self.save_checkpoint()
         
+        # The ledger only autosaves every checkpoint_interval records; write the rest now
+        self.ledger.close()
+
+        self.final_prompt = self.raw_best_prompt
+        if self.config.experiment.demo_count > 0 and self.val_set:
+            self._select_demos()
+        if self.test_set:
+            self._score_test_set()
+
         # Generate final report
         report = self.generate_summary_report()
         

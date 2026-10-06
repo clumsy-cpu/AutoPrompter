@@ -102,6 +102,14 @@ class ExperimentConfig:
     parallel_workers: int = 3
     parallel_candidates: int = 3
     reuse_dataset: bool = False  # True: load the first batch_size entries of storage.dataset_file instead of regenerating
+    acceptance: str = "always"  # always: every proposal replaces the prompt; val: kept only if it beats the current prompt on storage.val_file
+    val_significance: bool = False  # with acceptance=val, also require a significant val improvement (t-test, bootstrap fallback)
+    hide_expected: bool = False  # True: the Optimizer never sees expected outputs (feedback and history)
+    label_guard: bool = False  # True: reject proposals that contain a train or val expected output
+    candidates_per_step: int = 1  # >1: propose this many prompts per iteration (max 5), keep the best on train
+    demo_count: int = 0  # >0: after the loop, try adding this many train examples to the best prompt (needs storage.val_file)
+    demo_trials: int = 4  # random example sets tried; one is kept only if it beats the prompt alone on val
+    seed: int = 0  # seed for the example sets
 
 
 @dataclass
@@ -110,12 +118,13 @@ class TaskConfig:
     name: str = "text_classification"
     description: str = "Classify text into positive or negative sentiment"
     initial_prompt: str = "Analyze the sentiment of the following text and respond with only 'positive' or 'negative'."
+    context_files: List[str] = field(default_factory=list)  # text files given to the Target before the prompt; the Optimizer sees only their names
 
 
 @dataclass
 class MetricConfig:
     """Configuration for evaluation metrics."""
-    type: str = "accuracy"  # accuracy, f1, exact_match, contains, semantic_similarity
+    type: str = "accuracy"  # accuracy, f1, exact_match, contains, strict_contains, semantic_similarity
     target_score: float = 0.95
 
 
@@ -133,6 +142,8 @@ class StorageConfig:
     dataset_file: str = "generated_dataset.json"
     results_dir: str = "results"
     checkpoint_interval: int = 10
+    val_file: str = ""  # selection set (acceptance=val); never shown to the Optimizer
+    test_file: str = ""  # scored once at the end for the initial and final prompts
 
 
 @dataclass
@@ -184,9 +195,11 @@ class Config:
             'context': asdict(self.context),
             'storage': asdict(self.storage)
         }
-        # Remove API keys from saved config for security
-        data['optimizer_llm']['api_key'] = None
-        data['target_llm']['api_key'] = None
+        # Remove API keys from saved config for security (only blocks that have the field:
+        # LocalLLMConfig has none and would not load back with an api_key key)
+        for block in ('optimizer_llm', 'target_llm'):
+            if 'api_key' in data[block]:
+                data[block]['api_key'] = None
         
         with open(filepath, 'w') as f:
             yaml.dump(data, f, default_flow_style=False)
@@ -241,15 +254,28 @@ class Config:
             errors.append("experiment.max_iterations must be >= 1")
         if self.experiment.batch_size < 1:
             errors.append("experiment.batch_size must be >= 1")
+        if self.experiment.candidates_per_step < 1:
+            errors.append("experiment.candidates_per_step must be >= 1")
+        if self.experiment.demo_count > 0 and not self.storage.val_file:
+            errors.append("experiment.demo_count needs storage.val_file (examples are selected on val)")
+        
+        if self.experiment.acceptance not in ('always', 'val'):
+            errors.append(f"experiment.acceptance must be 'always' or 'val', got '{self.experiment.acceptance}'")
+        if self.experiment.acceptance == 'val' and not (self.storage.val_file and self.storage.test_file):
+            errors.append("experiment.acceptance=val needs storage.val_file and storage.test_file "
+                          "(fixed sets with labels the Optimizer did not write)")
         
         # Validate task config
         if not self.task.name:
             errors.append("task.name is required")
         if not self.task.initial_prompt:
             errors.append("task.initial_prompt is required")
+        for path in self.task.context_files:
+            if not os.path.isfile(path):
+                errors.append(f"task.context_files: file not found: {path}")
         
         # Validate metric config - now supports 'auto' for optimizer-defined metrics
-        valid_metrics = ['accuracy', 'f1', 'exact_match', 'contains', 'semantic_similarity', 'auto']
+        valid_metrics = ['accuracy', 'f1', 'exact_match', 'contains', 'strict_contains', 'semantic_similarity', 'auto']
         if self.metric.type not in valid_metrics:
             errors.append(f"metric.type must be one of {valid_metrics}")
         

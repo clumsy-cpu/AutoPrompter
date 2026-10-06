@@ -10,7 +10,8 @@ Verifies:
 
 import sys
 import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
 
 import re
 from unittest.mock import Mock, patch, MagicMock
@@ -20,7 +21,7 @@ def test_baseline_evaluation_in_code():
     """Verify baseline evaluation code exists in optimization_system.py."""
     print("\n=== Testing Baseline Evaluation Code ===")
     
-    with open('/root/autoprompter/src/optimization_system.py', 'r') as f:
+    with open(os.path.join(ROOT, 'src/optimization_system.py'), 'r') as f:
         content = f.read()
     
     # Check for baseline evaluation section
@@ -44,7 +45,7 @@ def test_stagnation_threshold():
     """Verify stagnation threshold is set to 5."""
     print("\n=== Testing Stagnation Threshold ===")
     
-    with open('/root/autoprompter/src/prompt_optimizer.py', 'r') as f:
+    with open(os.path.join(ROOT, 'src/prompt_optimizer.py'), 'r') as f:
         content = f.read()
     
     # Check for stagnation threshold of 5
@@ -67,7 +68,7 @@ def test_statistical_significance():
     """Verify statistical significance testing is implemented."""
     print("\n=== Testing Statistical Significance ===")
     
-    with open('/root/autoprompter/src/optimization_system.py', 'r') as f:
+    with open(os.path.join(ROOT, 'src/optimization_system.py'), 'r') as f:
         content = f.read()
     
     # Check for t-test implementation
@@ -93,7 +94,7 @@ def test_semantic_duplicate_detection():
     """Verify semantic duplicate detection is implemented."""
     print("\n=== Testing Semantic Duplicate Detection ===")
     
-    with open('/root/autoprompter/src/experiment_ledger.py', 'r') as f:
+    with open(os.path.join(ROOT, 'src/experiment_ledger.py'), 'r') as f:
         content = f.read()
     
     # Check for embedding-based detection
@@ -130,7 +131,7 @@ def test_prompt_complexity_tracking():
     """Verify prompt complexity tracking is implemented."""
     print("\n=== Testing Prompt Complexity Tracking ===")
     
-    with open('/root/autoprompter/src/prompt_optimizer.py', 'r') as f:
+    with open(os.path.join(ROOT, 'src/prompt_optimizer.py'), 'r') as f:
         content = f.read()
     
     # Check for complexity metrics
@@ -168,7 +169,7 @@ def test_new_best_logging():
     """Verify NEW BEST logging distinguishes from BASELINE."""
     print("\n=== Testing NEW BEST vs BASELINE Logging ===")
     
-    with open('/root/autoprompter/src/optimization_system.py', 'r') as f:
+    with open(os.path.join(ROOT, 'src/optimization_system.py'), 'r') as f:
         content = f.read()
     
     # Check for distinct logging messages
@@ -196,14 +197,14 @@ def test_imports():
     print("\n=== Testing Required Imports ===")
     
     # Check optimization_system.py
-    with open('/root/autoprompter/src/optimization_system.py', 'r') as f:
+    with open(os.path.join(ROOT, 'src/optimization_system.py'), 'r') as f:
         opt_content = f.read()
     
     assert "from scipy import stats" in opt_content, \
         "Missing scipy.stats import in optimization_system.py"
     
     # Check experiment_ledger.py
-    with open('/root/autoprompter/src/experiment_ledger.py', 'r') as f:
+    with open(os.path.join(ROOT, 'src/experiment_ledger.py'), 'r') as f:
         ledger_content = f.read()
     
     assert "from sentence_transformers import SentenceTransformer" in ledger_content, \
@@ -212,7 +213,7 @@ def test_imports():
         "Missing numpy import in experiment_ledger.py"
     
     # Check prompt_optimizer.py
-    with open('/root/autoprompter/src/prompt_optimizer.py', 'r') as f:
+    with open(os.path.join(ROOT, 'src/prompt_optimizer.py'), 'r') as f:
         prompt_content = f.read()
     
     assert "import re" in prompt_content, \
