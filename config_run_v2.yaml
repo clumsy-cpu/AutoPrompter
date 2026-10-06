@@ -1,0 +1,50 @@
+# Run config: Optimizer=Opus, Target=Haiku, against the grounded_dataset_v2 split
+# (dataset itself was written by Opus via scripts/gen_dataset_v2.py, split by
+# scripts/split_dataset.py). Honest-evaluation keys on, per README "Honest Evaluation".
+
+optimizer_llm:
+  backend: "claude_cli"
+  model: "opus"            # writes new prompts
+  timeout: 300
+
+target_llm:
+  backend: "claude_cli"
+  model: "haiku"           # runs the prompt under test
+  timeout: 120
+
+experiment:
+  max_iterations: 6        # new prompts proposed after the baseline
+  min_improvement: 0.01
+  batch_size: 34            # = entries in data/train.json
+  reuse_dataset: true       # use storage.dataset_file; never let the Optimizer write the data
+  acceptance: "val"         # keep a prompt only if it beats the current one on storage.val_file
+  val_significance: false
+  hide_expected: true       # the Optimizer never sees expected answers
+  label_guard: true         # refuse prompts that contain train or val answers
+  candidates_per_step: 4    # 4 proposals per iteration, best on train goes to the val check
+  demo_count: 3             # then try 3 train examples after the best prompt, kept only if val improves
+  demo_trials: 4
+  seed: 0
+
+task:
+  name: "skill_qa_v2"
+  description: "Answer implementation questions about the continuous-learning-v2 skill"
+  initial_prompt: |
+    Answer the question about the skill in a few words.
+  context_files: []         # the skill source isn't in this container; Target answers from the prompt alone
+
+metric:
+  type: "strict_contains"   # whole-word match, no partial credit, refusals score 0
+  target_score: 0.95
+
+context:
+  max_experiments_in_context: 20
+  compression_threshold: 50
+
+storage:
+  ledger_file: "experiment_ledger_run_v2.json"
+  dataset_file: "notes/datasets/grounded_dataset_v2_split/train.json"
+  val_file: "notes/datasets/grounded_dataset_v2_split/val.json"
+  test_file: "notes/datasets/grounded_dataset_v2_split/test.json"
+  results_dir: "results_run_v2"
+  checkpoint_interval: 10

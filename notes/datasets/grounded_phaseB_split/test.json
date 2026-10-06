@@ -1,0 +1,212 @@
+[
+  {
+    "input": "Which environment variable controls how many trailing observation lines are sampled for analysis?",
+    "expected_output": "ECC_OBSERVER_MAX_ANALYSIS_LINES",
+    "metadata": {
+      "source": "agents/observer-loop.sh"
+    }
+  },
+  {
+    "input": "What is the name of the subdirectory under instincts that holds instincts subject to TTL pruning?",
+    "expected_output": "pending",
+    "metadata": {
+      "source": "scripts/instinct-cli.py"
+    }
+  },
+  {
+    "input": "Which command does observe.sh try as a macOS fallback when flock is unavailable for the lazy-start lock?",
+    "expected_output": "lockfile",
+    "metadata": {
+      "source": "hooks/observe.sh"
+    }
+  },
+  {
+    "input": "Which registry field is refreshed with the current UTC time on every detection?",
+    "expected_output": "last_seen",
+    "metadata": {
+      "source": "scripts/detect-project.sh"
+    }
+  },
+  {
+    "input": "What value is written to the source field of instincts written by auto-promotion?",
+    "expected_output": "auto-promoted",
+    "metadata": {
+      "source": "scripts/instinct-cli.py"
+    }
+  },
+  {
+    "input": "Which environment variable holds the comma-separated cwd path patterns that observe.sh excludes from observation?",
+    "expected_output": "ECC_OBSERVE_SKIP_PATHS",
+    "metadata": {
+      "source": "hooks/observe.sh"
+    }
+  },
+  {
+    "input": "Which environment variable selects the model used for the observer's Claude analysis?",
+    "expected_output": "ECC_OBSERVER_MODEL",
+    "metadata": {
+      "source": "agents/observer-loop.sh"
+    }
+  },
+  {
+    "input": "Which evolve flag causes skill, command and agent files to actually be written?",
+    "expected_output": "--generate",
+    "metadata": {
+      "source": "scripts/instinct-cli.py"
+    }
+  },
+  {
+    "input": "Besides text/, markdown, yaml and json, which Content-Type substring is accepted for remote imports?",
+    "expected_output": "octet-stream",
+    "metadata": {
+      "source": "scripts/instinct-cli.py"
+    }
+  },
+  {
+    "input": "What event value marks the end of a tool call in the example observation JSONL lines?",
+    "expected_output": "tool_complete",
+    "metadata": {
+      "source": "agents/observer.md"
+    }
+  },
+  {
+    "input": "Which function re-waits on the Claude child process so a SIGUSR1 interruption isn't treated as failure?",
+    "expected_output": "wait_for_claude_analysis",
+    "metadata": {
+      "source": "agents/observer-loop.sh"
+    }
+  },
+  {
+    "input": "Which environment variable is set to 1 to stop observe.sh from recording the observer's own Claude session?",
+    "expected_output": "ECC_SKIP_OBSERVE",
+    "metadata": {
+      "source": "agents/observer-loop.sh"
+    }
+  },
+  {
+    "input": "Which environment variable can override the python3 interpreter used to run instinct-cli.py in the observer loop?",
+    "expected_output": "CLV2_PYTHON_CMD",
+    "metadata": {
+      "source": "agents/observer-loop.sh"
+    }
+  },
+  {
+    "input": "What function name in session-guardian returns idle seconds per platform?",
+    "expected_output": "get_idle_seconds",
+    "metadata": {
+      "source": "agents/session-guardian.sh"
+    }
+  },
+  {
+    "input": "Which frontmatter key records how many projects an auto-promoted instinct appeared in?",
+    "expected_output": "seen_in_projects",
+    "metadata": {
+      "source": "scripts/instinct-cli.py"
+    }
+  },
+  {
+    "input": "What file stores the throttle counter for signaling the observer?",
+    "expected_output": ".observer-signal-counter",
+    "metadata": {
+      "source": "hooks/observe.sh"
+    }
+  },
+  {
+    "input": "Which 'projects' subcommand takes from_id and into_id arguments?",
+    "expected_output": "merge",
+    "metadata": {
+      "source": "scripts/instinct-cli.py"
+    }
+  },
+  {
+    "input": "Which frontmatter key records the original source path or URL in an imported instincts file?",
+    "expected_output": "imported_from",
+    "metadata": {
+      "source": "scripts/instinct-cli.py"
+    }
+  },
+  {
+    "input": "What User-Agent header value is sent when fetching remote instinct imports?",
+    "expected_output": "ECC-instinct-import/2",
+    "metadata": {
+      "source": "scripts/instinct-cli.py"
+    }
+  },
+  {
+    "input": "Which environment variable sets the end of the observer's active-hours window?",
+    "expected_output": "OBSERVER_ACTIVE_HOURS_END",
+    "metadata": {
+      "source": "agents/session-guardian.sh"
+    }
+  },
+  {
+    "input": "What replacement text does the secret scrubber in observe.sh substitute for matched secret values?",
+    "expected_output": "[REDACTED]",
+    "metadata": {
+      "source": "hooks/observe.sh"
+    }
+  },
+  {
+    "input": "What tools list is written into the frontmatter of generated agent files?",
+    "expected_output": "Read, Grep, Glob",
+    "metadata": {
+      "source": "scripts/instinct-cli.py"
+    }
+  },
+  {
+    "input": "Which signal sent to the observer process triggers an on-demand analysis run?",
+    "expected_output": "SIGUSR1",
+    "metadata": {
+      "source": "agents/observer.md"
+    }
+  },
+  {
+    "input": "What constant limits generated skill directory slugs to 30 characters?",
+    "expected_output": "EVOLVED_SKILL_SLUG_LENGTH",
+    "metadata": {
+      "source": "scripts/instinct-cli.py"
+    }
+  },
+  {
+    "input": "What constant requires at least two shared keywords before triggers are clustered together?",
+    "expected_output": "TRIGGER_MIN_SHARED_KEYWORDS",
+    "metadata": {
+      "source": "scripts/instinct-cli.py"
+    }
+  },
+  {
+    "input": "Besides security and workflow, which domain is in the global-friendly list for promotion?",
+    "expected_output": "general-best-practices",
+    "metadata": {
+      "source": "agents/observer.md"
+    }
+  },
+  {
+    "input": "What ECC_HOOK_PROFILE value is passed to the observer's Claude invocation?",
+    "expected_output": "minimal",
+    "metadata": {
+      "source": "agents/observer-loop.sh"
+    }
+  },
+  {
+    "input": "What model value is written into the frontmatter of generated agent files?",
+    "expected_output": "sonnet",
+    "metadata": {
+      "source": "scripts/instinct-cli.py"
+    }
+  },
+  {
+    "input": "What constant controls how many candidates of each kind the evolve analysis prints?",
+    "expected_output": "PREVIEW_LIMIT",
+    "metadata": {
+      "source": "scripts/instinct-cli.py"
+    }
+  },
+  {
+    "input": "Which ioreg class is queried on macOS to read idle time?",
+    "expected_output": "IOHIDSystem",
+    "metadata": {
+      "source": "agents/session-guardian.sh"
+    }
+  }
+]
