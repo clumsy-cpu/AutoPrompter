@@ -184,9 +184,11 @@ class Config:
             'context': asdict(self.context),
             'storage': asdict(self.storage)
         }
-        # Remove API keys from saved config for security
-        data['optimizer_llm']['api_key'] = None
-        data['target_llm']['api_key'] = None
+        # Remove API keys from saved config for security (only blocks that have the field:
+        # LocalLLMConfig has none and would not load back with an api_key key)
+        for block in ('optimizer_llm', 'target_llm'):
+            if 'api_key' in data[block]:
+                data[block]['api_key'] = None
         
         with open(filepath, 'w') as f:
             yaml.dump(data, f, default_flow_style=False)
