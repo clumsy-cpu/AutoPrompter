@@ -27,6 +27,7 @@ class MetricsEvaluator:
             'f1': self._f1_score,
             'exact_match': self._exact_match,
             'contains': self._contains,
+            'strict_contains': self._strict_contains,
             'semantic_similarity': self._semantic_similarity
         }
         
@@ -191,6 +192,30 @@ class MetricsEvaluator:
         
         return 0.0
     
+    # Phrases that mark a refusal or a non-answer, in normalized form (lowercase, no punctuation)
+    REFUSAL_PHRASES = (
+        "not documented", "not mentioned", "not specified", "not stated", "not provided",
+        "no information", "dont know", "do not know", "dont see", "do not see",
+        "cannot find", "cant find", "can not find", "unable to find", "unable to determine",
+        "cannot determine", "cant determine",
+    )
+
+    def _is_refusal(self, pred_norm: str) -> bool:
+        return any(re.search(rf'(?<!\w){phrase}(?!\w)', pred_norm) for phrase in self.REFUSAL_PHRASES)
+
+    def _strict_contains(self, predicted: str, expected: str) -> float:
+        """1.0 only if the expected text appears as whole words in the prediction, else 0.0.
+
+        No number fallback and no partial credit (unlike 'contains'). A prediction that
+        refuses or says the answer is not documented scores 0, even if it then guesses.
+        """
+        pred_norm = self._normalize_text(predicted)
+        exp_norm = self._normalize_text(expected)
+        if not pred_norm or not exp_norm or self._is_refusal(pred_norm):
+            return 0.0
+        found = re.search(rf'(?<!\w){re.escape(exp_norm)}(?!\w)', pred_norm)
+        return 1.0 if found else 0.0
+
     def get_feedback(self, predicted: str, expected: str) -> Dict[str, Any]:
         """Get detailed feedback about why a prediction failed or succeeded."""
         pred_norm = self._normalize_text(predicted)
@@ -207,6 +232,9 @@ class MetricsEvaluator:
         if not pred_norm:
             feedback['issues'].append("Empty or whitespace-only prediction")
             return feedback
+
+        if self.metric_type == 'strict_contains' and self._is_refusal(pred_norm):
+            feedback['issues'].append("Answer refuses or says the information is not available (scores 0)")
         
         # Check format issues
         if 'step 1' in exp_norm and 'step 1' not in pred_norm:

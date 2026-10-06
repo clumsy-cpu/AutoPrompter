@@ -119,7 +119,7 @@ class TaskConfig:
 @dataclass
 class MetricConfig:
     """Configuration for evaluation metrics."""
-    type: str = "accuracy"  # accuracy, f1, exact_match, contains, semantic_similarity
+    type: str = "accuracy"  # accuracy, f1, exact_match, contains, strict_contains, semantic_similarity
     target_score: float = 0.95
 
 
@@ -262,7 +262,7 @@ class Config:
             errors.append("task.initial_prompt is required")
         
         # Validate metric config - now supports 'auto' for optimizer-defined metrics
-        valid_metrics = ['accuracy', 'f1', 'exact_match', 'contains', 'semantic_similarity', 'auto']
+        valid_metrics = ['accuracy', 'f1', 'exact_match', 'contains', 'strict_contains', 'semantic_similarity', 'auto']
         if self.metric.type not in valid_metrics:
             errors.append(f"metric.type must be one of {valid_metrics}")
         

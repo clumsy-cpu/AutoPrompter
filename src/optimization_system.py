@@ -873,7 +873,7 @@ class PromptOptimizationSystem:
                 )
                 # Update evaluator based on suggested type
                 eval_type = metric_def.get('evaluation_type', 'semantic_similarity')
-                if eval_type in ['accuracy', 'f1', 'exact_match', 'contains', 'semantic_similarity']:
+                if eval_type in ['accuracy', 'f1', 'exact_match', 'contains', 'strict_contains', 'semantic_similarity']:
                     self.metrics_evaluator = MetricsEvaluator(eval_type)
                     logger.info(f"Using {eval_type} evaluator for custom metric")
             else:
