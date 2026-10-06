@@ -1,0 +1,205 @@
+[
+  {
+    "input": "Which user32.dll function is called via PowerShell to detect idle time on Windows?",
+    "expected_output": "GetLastInputInfo",
+    "metadata": {
+      "source": "agents/session-guardian.sh"
+    }
+  },
+  {
+    "input": "What comma-separated tool list is passed to --allowedTools for the analysis run?",
+    "expected_output": "Read,Write",
+    "metadata": {
+      "source": "agents/observer-loop.sh"
+    }
+  },
+  {
+    "input": "What is the default file name of session-guardian's last-run log under ~/.claude?",
+    "expected_output": "observer-last-run.log",
+    "metadata": {
+      "source": "agents/session-guardian.sh"
+    }
+  },
+  {
+    "input": "Which function parses git worktree list --porcelain to find the main worktree path?",
+    "expected_output": "_clv2_main_worktree_root",
+    "metadata": {
+      "source": "scripts/detect-project.sh"
+    }
+  },
+  {
+    "input": "What event value is written when observe.sh fails to parse the hook input JSON?",
+    "expected_output": "parse_error",
+    "metadata": {
+      "source": "hooks/observe.sh"
+    }
+  },
+  {
+    "input": "What file stores the throttle counter for signaling the observer?",
+    "expected_output": ".observer-signal-counter",
+    "metadata": {
+      "source": "hooks/observe.sh"
+    }
+  },
+  {
+    "input": "Which environment variable overrides the path of the observer's guard sentinel file?",
+    "expected_output": "CLV2_OBSERVER_SENTINEL_FILE",
+    "metadata": {
+      "source": "agents/start-observer.sh"
+    }
+  },
+  {
+    "input": "What constant holds the 0.8 average-confidence cutoff used for promotion candidates?",
+    "expected_output": "PROMOTE_CONFIDENCE_THRESHOLD",
+    "metadata": {
+      "source": "scripts/instinct-cli.py"
+    }
+  },
+  {
+    "input": "To which log file does observe.sh append the output of a lazy observer start?",
+    "expected_output": "observer-start.log",
+    "metadata": {
+      "source": "hooks/observe.sh"
+    }
+  },
+  {
+    "input": "What constant controls how many candidates of each kind the evolve analysis prints?",
+    "expected_output": "PREVIEW_LIMIT",
+    "metadata": {
+      "source": "scripts/instinct-cli.py"
+    }
+  },
+  {
+    "input": "Which evolve flag caps how many candidates of each kind are generated?",
+    "expected_output": "--limit",
+    "metadata": {
+      "source": "scripts/instinct-cli.py"
+    }
+  },
+  {
+    "input": "Which prune flag sets the maximum age in days before pending instincts are deleted?",
+    "expected_output": "--max-age",
+    "metadata": {
+      "source": "scripts/instinct-cli.py"
+    }
+  },
+  {
+    "input": "Which function re-waits on the Claude child process so a SIGUSR1 interruption isn't treated as failure?",
+    "expected_output": "wait_for_claude_analysis",
+    "metadata": {
+      "source": "agents/observer-loop.sh"
+    }
+  },
+  {
+    "input": "What sentinel file name does detect-project.sh export as CLV2_OBSERVER_SENTINEL_FILE?",
+    "expected_output": ".observer.lock",
+    "metadata": {
+      "source": "scripts/detect-project.sh"
+    }
+  },
+  {
+    "input": "Which environment variable sets the user idle threshold for the idle-detection gate?",
+    "expected_output": "OBSERVER_MAX_IDLE_SECONDS",
+    "metadata": {
+      "source": "agents/session-guardian.sh"
+    }
+  },
+  {
+    "input": "Which script does observe.sh invoke with the start subcommand to launch the observer?",
+    "expected_output": "start-observer.sh",
+    "metadata": {
+      "source": "hooks/observe.sh"
+    }
+  },
+  {
+    "input": "Which helper removes user:password@ credentials from a remote URL via regex?",
+    "expected_output": "_strip_remote_credentials",
+    "metadata": {
+      "source": "scripts/instinct-cli.py"
+    }
+  },
+  {
+    "input": "Which 'projects' subcommand takes from_id and into_id arguments?",
+    "expected_output": "merge",
+    "metadata": {
+      "source": "scripts/instinct-cli.py"
+    }
+  },
+  {
+    "input": "What constant limits generated skill directory slugs to 30 characters?",
+    "expected_output": "EVOLVED_SKILL_SLUG_LENGTH",
+    "metadata": {
+      "source": "scripts/instinct-cli.py"
+    }
+  },
+  {
+    "input": "Which environment variable holds the comma-separated cwd path patterns that observe.sh excludes from observation?",
+    "expected_output": "ECC_OBSERVE_SKIP_PATHS",
+    "metadata": {
+      "source": "hooks/observe.sh"
+    }
+  },
+  {
+    "input": "Besides text/, markdown, yaml and json, which Content-Type substring is accepted for remote imports?",
+    "expected_output": "octet-stream",
+    "metadata": {
+      "source": "scripts/instinct-cli.py"
+    }
+  },
+  {
+    "input": "Which environment variable can override the python3 interpreter used to run instinct-cli.py in the observer loop?",
+    "expected_output": "CLV2_PYTHON_CMD",
+    "metadata": {
+      "source": "agents/observer-loop.sh"
+    }
+  },
+  {
+    "input": "Which ioreg class is queried on macOS to read idle time?",
+    "expected_output": "IOHIDSystem",
+    "metadata": {
+      "source": "agents/session-guardian.sh"
+    }
+  },
+  {
+    "input": "Besides security and workflow, which domain is in the global-friendly list for promotion?",
+    "expected_output": "general-best-practices",
+    "metadata": {
+      "source": "agents/observer.md"
+    }
+  },
+  {
+    "input": "Which evolve flag causes skill, command and agent files to actually be written?",
+    "expected_output": "--generate",
+    "metadata": {
+      "source": "scripts/instinct-cli.py"
+    }
+  },
+  {
+    "input": "What temporary directory name inside PROJECT_DIR holds the sampled analysis and prompt files?",
+    "expected_output": ".observer-tmp",
+    "metadata": {
+      "source": "agents/observer-loop.sh"
+    }
+  },
+  {
+    "input": "Which environment variable must be set to true to allow Claude analysis on Windows?",
+    "expected_output": "ECC_OBSERVER_ALLOW_WINDOWS",
+    "metadata": {
+      "source": "agents/observer-loop.sh"
+    }
+  },
+  {
+    "input": "Which function resolves paths and refuses to recursively delete anything outside PROJECTS_DIR?",
+    "expected_output": "_remove_project_storage",
+    "metadata": {
+      "source": "scripts/instinct-cli.py"
+    }
+  },
+  {
+    "input": "What lock file name guards the lazy start of the observer in observe.sh?",
+    "expected_output": ".observer-start.lock",
+    "metadata": {
+      "source": "hooks/observe.sh"
+    }
+  }
+]
