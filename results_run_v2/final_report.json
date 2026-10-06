@@ -1,0 +1,33 @@
+{
+  "status": "success",
+  "task": "skill_qa_v2",
+  "total_iterations": 6,
+  "metric_type": "strict_contains",
+  "initial_score": 0.11764705882352941,
+  "final_score": 0.20588235294117646,
+  "improvement": 0.08823529411764705,
+  "improvement_percent": 74.99999999999999,
+  "best_prompt": "Answer with your single best guess as a bare identifier, such as a function name, field, value, or path. Do not ask questions, explore files, or explain.",
+  "stat_best_prompt": "Answer with your single best guess as a bare identifier, such as a function name, field, value, or path. Do not ask questions, explore files, or explain.",
+  "initial_prompt": "Answer the question about the skill in a few words.\n",
+  "target_reached": false,
+  "experiments_count": 7,
+  "acceptance": "val",
+  "val_initial": 0.1,
+  "val_best": 0.23333333333333334,
+  "accepted": 1,
+  "rejected": 5,
+  "rejection_reasons": {
+    "train": 4,
+    "val": 1
+  },
+  "skipped_proposals": {
+    "label_leak": 18
+  },
+  "demos": [],
+  "val_without_demos": 0.23333333333333334,
+  "val_with_demos": null,
+  "final_prompt": "Answer with your single best guess as a bare identifier, such as a function name, field, value, or path. Do not ask questions, explore files, or explain.",
+  "test_initial": 0.03333333333333333,
+  "test_best": 0.13333333333333333
+}
