@@ -265,3 +265,30 @@ def test_protected_check_ignores_whitespace_changes(tmp_path):
                          task={"initial_prompt": initial})[0]
     assert system._candidate_problem(reflowed) is None
     assert system._candidate_problem("Intro\n<<<KEEP>>>\nWhen to Activate: never\n<<<END KEEP>>>")[0] == "protected"
+
+
+def test_context_files_reach_the_target_but_only_their_names_reach_the_optimizer(tmp_path):
+    doc = tmp_path / "observer.md"
+    doc.write_text("The observer writes its pid to zeta-file.")
+
+    def target(full_prompt, system_message):
+        return "zeta-file" if "pid to zeta-file" in full_prompt else "x"
+
+    train = [("Where is the pid?", "zeta-file")]
+    system, opt, tgt = make_system(tmp_path, scripted_optimizer(["P1"]), target, train,
+                                   experiment={"max_iterations": 1},
+                                   task={"context_files": [str(doc)]})
+    report = system.run()
+    assert report["initial_score"] == 1.0
+    assert tgt.calls[0][0].startswith("Reference material (use it to answer):\n\n### observer.md\n")
+    optimizer_requests = "\n".join(p for p, _ in opt.calls)
+    assert "observer.md" in optimizer_requests and "pid to zeta-file" not in optimizer_requests
+
+
+def test_missing_context_file_fails_at_config_load(tmp_path):
+    from config_manager import load_config
+    cfg = tmp_path / "c.yaml"
+    cfg.write_text("optimizer_llm: {backend: claude_cli}\ntarget_llm: {backend: claude_cli}\n"
+                   f"task: {{context_files: [{tmp_path / 'nope.md'}]}}\n")
+    with pytest.raises(ValueError, match="nope.md"):
+        load_config(str(cfg))

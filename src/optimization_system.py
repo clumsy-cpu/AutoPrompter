@@ -157,6 +157,10 @@ class PromptOptimizationSystem:
         # Protected sections: blocks of the initial prompt between <<<KEEP>>> and <<<END KEEP>>>
         self.protected_blocks: List[str] = _KEEP_BLOCK.findall(config.task.initial_prompt)
 
+        # Reference material for the Target (task.context_files), loaded by run()
+        self.context_files: List[str] = list(getattr(config.task, 'context_files', None) or [])
+        self.reference_block = ""
+
         # Statistical tracking for significance testing
         self.best_scores_history: List[float] = []
         self.baseline_established = False
@@ -233,12 +237,28 @@ class PromptOptimizationSystem:
         return entries
     
     def _target_prompt(self, prompt: str, inp: str) -> str:
-        """What the Target model receives for one input."""
-        return f"{strip_keep_markers(prompt)}\n\nInput: {inp}\n\nOutput:"
+        """What the Target model receives for one input: reference material, prompt, input."""
+        return f"{self.reference_block}{strip_keep_markers(prompt)}\n\nInput: {inp}\n\nOutput:"
+
+    def _load_reference_block(self):
+        """Read task.context_files into the block that precedes every Target prompt."""
+        parts = []
+        for path in self.context_files:
+            with open(path, 'r') as f:
+                parts.append(f"### {os.path.basename(path)}\n{f.read().strip()}")
+        self.reference_block = ("Reference material (use it to answer):\n\n"
+                                + "\n\n".join(parts) + "\n\n---\n\n")
+        logger.info(f"Reference material: {len(parts)} file(s), {len(self.reference_block)} characters "
+                    f"added to every Target call")
 
     def _standing_rules(self) -> str:
         """Rules repeated to the Optimizer with every request."""
         rules = []
+        if self.context_files:
+            names = ", ".join(os.path.basename(p) for p in self.context_files)
+            rules.append(f"Before the prompt, the Target model receives these reference files: {names}. "
+                         f"You cannot see or edit them. Do not copy facts into the prompt; tell the model "
+                         f"how to use the reference material to answer.")
         if self.protected_blocks:
             rules.append(f"The prompt contains {len(self.protected_blocks)} protected section(s) between "
                          f"{KEEP_START} and {KEEP_END}. Copy each one into your new prompt exactly, "
@@ -260,7 +280,8 @@ class PromptOptimizationSystem:
         actual_outputs = []
         for inp in inputs:
             full_prompt = self._target_prompt(prompt, inp)
-            logger.info(f"Current prompt: {full_prompt}\n")
+            # Leave the reference material out of this per-call log (its size is logged once at load)
+            logger.info(f"Current prompt: {full_prompt[len(self.reference_block):]}\n")
             response = self.target_llm.query(full_prompt)
             
             if response.success and response.content:
@@ -1053,6 +1074,9 @@ class PromptOptimizationSystem:
         if self.gated and not self.val_set:
             logger.error("experiment.acceptance=val needs a non-empty storage.val_file")
             return {'status': 'failed', 'reason': 'No val set'}
+        
+        if self.context_files:
+            self._load_reference_block()
         
         if self.label_guard:
             labels = [e.expected_output for e in self.dataset + self.val_set]

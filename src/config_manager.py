@@ -118,6 +118,7 @@ class TaskConfig:
     name: str = "text_classification"
     description: str = "Classify text into positive or negative sentiment"
     initial_prompt: str = "Analyze the sentiment of the following text and respond with only 'positive' or 'negative'."
+    context_files: List[str] = field(default_factory=list)  # text files given to the Target before the prompt; the Optimizer sees only their names
 
 
 @dataclass
@@ -268,6 +269,9 @@ class Config:
             errors.append("task.name is required")
         if not self.task.initial_prompt:
             errors.append("task.initial_prompt is required")
+        for path in self.task.context_files:
+            if not os.path.isfile(path):
+                errors.append(f"task.context_files: file not found: {path}")
         
         # Validate metric config - now supports 'auto' for optimizer-defined metrics
         valid_metrics = ['accuracy', 'f1', 'exact_match', 'contains', 'strict_contains', 'semantic_similarity', 'auto']
