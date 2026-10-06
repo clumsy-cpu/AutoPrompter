@@ -1,46 +1,66 @@
-"""Split a grounded Q&A dataset (list of {input, expected_output, metadata}) into train/val/test.
-
-Stratifies by metadata.source so each split keeps the same source mix as the
-input, and splits deterministically (seeded shuffle) so re-runs are stable.
-
-Usage: python3 split_dataset.py IN_FILE OUT_DIR [TRAIN_RATIO VAL_RATIO TEST_RATIO] [SEED]
-Writes OUT_DIR/train.json, OUT_DIR/val.json, OUT_DIR/test.json.
+#!/usr/bin/env python3
 """
+Split one dataset JSON into train, val and test files for experiment.acceptance: val.
+
+The input is a list of {"input": ..., "expected_output": ...} objects (the format of
+storage.dataset_file). Entries with the same input are dropped after the first, so no
+question appears in two sets. The split is random but repeatable for a given seed.
+
+Usage:
+    python3 scripts/split_dataset.py grounded.json --out-dir data/ --val 30 --test 30
+    python3 scripts/split_dataset.py grounded.json --out-dir data/ --val 0.3 --test 0.3 --seed 1
+
+--val and --test take a count (integer) or a fraction of the deduplicated entries
+(number below 1). Whatever is left is train. The files are written as
+<out-dir>/train.json, val.json and test.json.
+"""
+
+import argparse
 import json
 import os
 import random
 import sys
-from collections import Counter, defaultdict
 
-in_file = sys.argv[1]
-out_dir = sys.argv[2]
-ratios = tuple(float(x) for x in sys.argv[3:6]) if len(sys.argv) > 5 else (0.34, 0.33, 0.33)
-seed = int(sys.argv[6]) if len(sys.argv) > 6 else 0
-assert abs(sum(ratios) - 1.0) < 1e-6, "ratios must sum to 1"
 
-items = json.load(open(in_file))
-by_source = defaultdict(list)
-for it in items:
-    by_source[it.get("metadata", {}).get("source", "")].append(it)
+def split_size(value: float, total: int) -> int:
+    return int(round(value * total)) if value < 1 else int(value)
 
-rng = random.Random(seed)
-splits = {"train": [], "val": [], "test": []}
-names = list(splits)
-for source, group in by_source.items():
-    group = group[:]
-    rng.shuffle(group)
-    n = len(group)
-    n_train = round(n * ratios[0])
-    n_val = round(n * ratios[1])
-    cuts = {"train": group[:n_train], "val": group[n_train:n_train + n_val], "test": group[n_train + n_val:]}
-    for name in names:
-        splits[name] += cuts[name]
 
-os.makedirs(out_dir, exist_ok=True)
-for name in names:
-    rng.shuffle(splits[name])
-    json.dump(splits[name], open(os.path.join(out_dir, f"{name}.json"), "w"), indent=2)
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[1],
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("dataset", help="input JSON list of {input, expected_output}")
+    parser.add_argument("--out-dir", required=True, help="directory for train.json, val.json, test.json")
+    parser.add_argument("--val", type=float, required=True, help="val size: count, or fraction if < 1")
+    parser.add_argument("--test", type=float, required=True, help="test size: count, or fraction if < 1")
+    parser.add_argument("--seed", type=int, default=0)
+    args = parser.parse_args(argv)
 
-print(f"{in_file}: {len(items)} items -> " + ", ".join(f"{n}={len(splits[n])}" for n in names))
-for name in names:
-    print(f"  {name} sources:", dict(Counter(it["metadata"]["source"] for it in splits[name])))
+    with open(args.dataset) as f:
+        entries = json.load(f)
+    unique = list({e["input"]: e for e in reversed(entries)}.values())[::-1]  # first occurrence wins
+    dropped = len(entries) - len(unique)
+
+    n_val, n_test = split_size(args.val, len(unique)), split_size(args.test, len(unique))
+    if n_val + n_test >= len(unique):
+        print(f"error: val ({n_val}) + test ({n_test}) leave no train entries out of {len(unique)}",
+              file=sys.stderr)
+        return 1
+
+    random.Random(args.seed).shuffle(unique)
+    splits = {"val": unique[:n_val], "test": unique[n_val:n_val + n_test], "train": unique[n_val + n_test:]}
+
+    os.makedirs(args.out_dir, exist_ok=True)
+    for name, items in splits.items():
+        with open(os.path.join(args.out_dir, f"{name}.json"), "w") as f:
+            json.dump(items, f, indent=2)
+    print(f"train {len(splits['train'])}, val {n_val}, test {n_test} written to {args.out_dir}"
+          + (f" ({dropped} duplicate inputs dropped)" if dropped else ""))
+    for name in ("val", "test"):
+        if len(splits[name]) < 30:
+            print(f"warning: {name} has {len(splits[name])} items; 30+ is recommended", file=sys.stderr)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

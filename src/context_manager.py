@@ -121,6 +121,9 @@ class ContextManager:
             f"  Score: {exp.get('metric_score', 0):.3f}",
         ]
         
+        if exp.get('status'):
+            lines.append(f"  Status: {exp['status']}")
+        
         # Add improvement if available
         if 'improvement' in exp:
             lines.append(f"  Improvement: {exp['improvement']:+.3f}")
@@ -130,7 +133,8 @@ class ContextManager:
             lines.append("  Sample Results:")
             for i, result in enumerate(exp['sample_results'][:2], 1):
                 lines.append(f"    {i}. Input: {result.get('input', 'N/A')[:50]}...")
-                lines.append(f"       Expected: {result.get('expected', 'N/A')}")
+                if 'expected' in result:  # left out when experiment.hide_expected is on
+                    lines.append(f"       Expected: {result['expected']}")
                 lines.append(f"       Got: {result.get('actual', 'N/A')}")
                 lines.append(f"       Score: {result.get('score', 0):.2f}")
         

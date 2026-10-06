@@ -592,7 +592,7 @@ Your response should include:
    - Score 1.0: Perfect response criteria
    - Score 0.5: Partial response criteria  
    - Score 0.0: Incorrect/missing response criteria
-4. Evaluation Type: Choose from [exact_match, contains, semantic_similarity, f1, accuracy]
+4. Evaluation Type: Choose from [exact_match, contains, strict_contains, semantic_similarity, f1, accuracy]
 
 Format your response as a JSON object with these fields:
 {{
