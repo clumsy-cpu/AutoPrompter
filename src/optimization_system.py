@@ -129,6 +129,11 @@ class PromptOptimizationSystem:
         self.guard_labels: List[str] = []
         self.guard_stats: Dict[str, int] = {}  # proposals dropped before testing, by reason
 
+        # Several proposals per iteration (experiment.candidates_per_step > 1)
+        self.candidates_per_step = getattr(config.experiment, 'candidates_per_step', 1)
+        if self.candidates_per_step > 5:
+            logger.warning(f"candidates_per_step={self.candidates_per_step} capped at 5 (one per proposal strategy)")
+
         # Statistical tracking for significance testing
         self.best_scores_history: List[float] = []
         self.baseline_established = False
@@ -820,6 +825,77 @@ class PromptOptimizationSystem:
         self.guard_stats[reason] = self.guard_stats.get(reason, 0) + 1
         return candidate, False
     
+    def _test_single_candidate(self) -> Tuple[Optional[Experiment], bool]:
+        """Propose one prompt and score it on train. Returns (experiment or None to skip, stop)."""
+        candidate, ok = self._next_candidate()
+        if candidate is None:
+            return None, True
+        if not ok:
+            return None, False
+        self.current_prompt = candidate
+        logger.info(f"Testing prompt on {len(self.dataset)} test cases")
+
+        # Signal UI: iteration starting — show prompt being evaluated (current_score=None = pre-run)
+        if self.progress_callback:
+            self.progress_callback(self.iteration, self.raw_best_score, self.raw_best_prompt, None, self.current_prompt)
+
+        # Run experiment on the full dataset
+        experiment = self.run_experiment(self.current_prompt, self.dataset)
+        
+        # Add to ledger
+        self.ledger.add_experiment(experiment)
+        self.run_scores.append(experiment.mean_score)
+        return experiment, False
+
+    def _test_candidate_batch(self) -> Tuple[Optional[Experiment], bool]:
+        """Propose several prompts (one per strategy), score them all on train and return the leader.
+
+        Refused proposals (duplicates, label leaks) are dropped before testing. The others
+        go into the Optimizer's history marked as not selected. Returns (leader or None to skip, stop).
+        """
+        n = min(self.candidates_per_step, 5)  # generate_candidates has 5 strategies
+        context = self.context_manager.get_context_for_optimizer(
+            self.current_prompt, self.last_experiment.mean_score
+        )
+        proposals = self.prompt_optimizer.generate_candidates(
+            context, self.current_prompt, self.last_experiment.mean_score,
+            self.config.metric.type, self._build_feedback_summary(self.last_experiment), n
+        )
+        if not proposals:
+            return None, True
+
+        candidates = []
+        for prompt in dict.fromkeys(proposals):  # drop exact repeats within the batch
+            problem = self._candidate_problem(prompt)
+            if problem:
+                self.guard_stats[problem[0]] = self.guard_stats.get(problem[0], 0) + 1
+                logger.warning(f"Candidate refused ({problem[0]})")
+            else:
+                candidates.append(prompt)
+        if not candidates:
+            logger.warning("All candidates refused, skipping this iteration")
+            return None, False
+
+        logger.info(f"Testing {len(candidates)} candidates on {len(self.dataset)} test cases")
+        results = dict(self.evaluate_candidates_parallel(candidates, self.dataset))
+        experiments = [results[prompt] for prompt in candidates]  # keep proposal order for ties
+        for experiment in experiments:
+            experiment.iteration = self.iteration + 1  # same numbering as run_experiment
+            self.ledger.add_experiment(experiment)
+            self.run_scores.append(experiment.mean_score)
+
+        leader = max(experiments, key=lambda e: e.mean_score)  # first one wins a tie
+        for experiment in experiments:
+            if experiment is not leader:
+                self._record_context(experiment, experiment.mean_score - self.last_experiment.mean_score,
+                                     status=f"NOT SELECTED: train {experiment.mean_score:.3f} < "
+                                            f"best candidate {leader.mean_score:.3f}")
+        logger.info(f"Best of {len(experiments)} candidates: train {leader.mean_score:.3f}")
+        self.current_prompt = leader.prompt
+        if self.progress_callback:
+            self.progress_callback(self.iteration, self.raw_best_score, self.raw_best_prompt, None, self.current_prompt)
+        return leader, False
+
     def _decide_gated(self, experiment) -> bool:
         """Apply the val gate to a scored candidate and update state. Returns True to stop (target reached)."""
         previous_train = self.incumbent_train.mean_score
@@ -949,25 +1025,15 @@ class PromptOptimizationSystem:
             logger.info(f"{'='*60}")
 
             # Propose a new prompt from the previous result's feedback
-            candidate, ok = self._next_candidate()
-            if candidate is None:
+            if self.candidates_per_step > 1:
+                experiment, stop = self._test_candidate_batch()
+            else:
+                experiment, stop = self._test_single_candidate()
+            if stop:
                 logger.error("Failed to generate improved prompt, stopping")
                 break
-            if not ok:
+            if experiment is None:
                 continue
-            self.current_prompt = candidate
-            logger.info(f"Testing prompt on {len(self.dataset)} test cases")
-
-            # Signal UI: iteration starting — show prompt being evaluated (current_score=None = pre-run)
-            if self.progress_callback:
-                self.progress_callback(self.iteration, self.raw_best_score, self.raw_best_prompt, None, self.current_prompt)
-
-            # Run experiment on the full dataset
-            experiment = self.run_experiment(self.current_prompt, self.dataset)
-            
-            # Add to ledger
-            self.ledger.add_experiment(experiment)
-            self.run_scores.append(experiment.mean_score)
 
             if self.gated:
                 if self._decide_gated(experiment):

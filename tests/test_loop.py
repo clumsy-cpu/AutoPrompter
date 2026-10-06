@@ -137,3 +137,45 @@ def test_acceptance_val_requires_val_file(tmp_path):
                    "experiment: {acceptance: val}\n")
     with pytest.raises(ValueError, match="val_file"):
         load_config(str(cfg))
+
+
+def by_strategy(**prompts):
+    """Optimizer that answers generate_candidates by strategy name (in its system message)."""
+    def respond(prompt, system_message):
+        for strategy, answer in prompts.items():
+            if f"'{strategy}'" in (system_message or ""):
+                return answer
+        return "FALLBACK"
+    return respond
+
+
+BATCH = by_strategy(structured_step_by_step="WORSE", minimal_directive="GOOD", expert_roleplay="LOOKUP")
+
+
+def test_batch_keeps_the_train_leader_in_legacy_mode(tmp_path):
+    system, opt, tgt = make_system(tmp_path, BATCH, GATE_TARGET, TRAIN,
+                                   experiment={"candidates_per_step": 3, "max_iterations": 1})
+    report = system.run()
+    assert prompts_tested(tgt, TRAIN) == ["P0", "WORSE", "GOOD", "LOOKUP"]
+    assert report["best_prompt"] == "LOOKUP" and report["experiments_count"] == 4
+
+
+def test_batch_leader_still_has_to_pass_the_val_gate(tmp_path):
+    system, opt, tgt = gated_system(tmp_path, ["unused"], candidates_per_step=3, max_iterations=1)
+    opt.responder = BATCH
+    report = system.run()
+    assert report["best_prompt"] == "P0" and report["rejection_reasons"] == {"val": 1}
+    assert prompts_tested(tgt, VAL) == ["P0", "LOOKUP"]  # only the train leader costs val calls
+
+
+def test_batch_drops_leaking_candidates_before_testing(tmp_path):
+    optimizer = by_strategy(structured_step_by_step="Say alphaword", minimal_directive="GOOD",
+                            expert_roleplay="P0")
+    train = [("q1", "alphaword"), ("q2", "betaword")]
+    system, opt, tgt = make_system(tmp_path, optimizer, lambda p, s: "x", train,
+                                   experiment={"candidates_per_step": 3, "max_iterations": 1,
+                                               "label_guard": True})
+    report = system.run()
+    # generate_candidates itself drops "P0" (the current prompt) and adds its fallback proposal
+    assert {target_parts(p)[0] for p, _ in tgt.calls} == {"P0", "GOOD", "FALLBACK"}
+    assert report["skipped_proposals"] == {"label_leak": 1}

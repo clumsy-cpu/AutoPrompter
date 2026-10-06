@@ -106,6 +106,7 @@ class ExperimentConfig:
     val_significance: bool = False  # with acceptance=val, also require a significant val improvement (t-test, bootstrap fallback)
     hide_expected: bool = False  # True: the Optimizer never sees expected outputs (feedback and history)
     label_guard: bool = False  # True: reject proposals that contain a train or val expected output
+    candidates_per_step: int = 1  # >1: propose this many prompts per iteration (max 5), keep the best on train
 
 
 @dataclass
@@ -249,6 +250,8 @@ class Config:
             errors.append("experiment.max_iterations must be >= 1")
         if self.experiment.batch_size < 1:
             errors.append("experiment.batch_size must be >= 1")
+        if self.experiment.candidates_per_step < 1:
+            errors.append("experiment.candidates_per_step must be >= 1")
         
         if self.experiment.acceptance not in ('always', 'val'):
             errors.append(f"experiment.acceptance must be 'always' or 'val', got '{self.experiment.acceptance}'")
