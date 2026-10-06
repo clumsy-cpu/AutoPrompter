@@ -1,0 +1,47 @@
+graph TD
+    N0[main.py]
+    N1[claude_cli_client.py]
+    N2[config_manager.py]
+    N3[context_manager.py]
+    N4[dataset_generator.py]
+    N5[experiment_ledger.py]
+    N6[llm_client.py]
+    N7[local_llm_client.py]
+    N8[metrics.py]
+    N9[optimization_system.py]
+    N10[prompt_optimizer.py]
+    N11[robustness_tester.py]
+    N12[app.js]
+    N13[test_claude_cli_client.py]
+    N14[test_integration.py]
+    N15[test_optimization_fixes.py]
+    N16[test_reuse_dataset.py]
+    N17[web_ui.py]
+    N0 --> N2
+    N0 --> N9
+    N1 --> N6
+    N4 --> N6
+    N5 --> N2
+    N6 --> N2
+    N9 --> N2
+    N9 --> N6
+    N9 --> N7
+    N9 --> N1
+    N9 --> N4
+    N9 --> N5
+    N9 --> N8
+    N9 --> N3
+    N9 --> N10
+    N9 --> N11
+    N10 --> N6
+    N10 --> N2
+    N11 --> N4
+    N13 --> N1
+    N13 --> N2
+    N14 --> N7
+    N14 --> N2
+    N16 --> N2
+    N16 --> N4
+    N16 --> N9
+    N17 --> N2
+    N17 --> N9

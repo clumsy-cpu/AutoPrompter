@@ -1,0 +1,18 @@
+[
+  {
+    "pattern_type": "Observer",
+    "category": "Behavioral",
+    "confidence": 0.8999999999999999,
+    "location": "~/AutoPrompter/src/experiment_ledger.py",
+    "class_name": "ExperimentLedger",
+    "method_name": null,
+    "line_number": 60,
+    "evidence": [
+      "Attach method: add_prompt_embedding",
+      "Attach method: add_experiment",
+      "Attach method: add_record"
+    ],
+    "related_classes": [],
+    "file_path": "~/AutoPrompter/src/experiment_ledger.py"
+  }
+]

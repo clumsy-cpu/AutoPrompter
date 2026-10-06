@@ -1,0 +1,250 @@
+[
+  {
+    "file_path": "~/AutoPrompter/src/claude_cli_client.py",
+    "language": "Python",
+    "patterns": [
+      {
+        "pattern_type": "Decorator",
+        "category": "Structural",
+        "confidence": 0.3,
+        "location": "~/AutoPrompter/src/claude_cli_client.py",
+        "class_name": "ClaudeCLIClient",
+        "method_name": "_parse_result",
+        "line_number": 52,
+        "evidence": [
+          "Method uses decorators: ['staticmethod']"
+        ],
+        "related_classes": []
+      }
+    ],
+    "total_classes": 1,
+    "total_functions": 0,
+    "analysis_depth": "deep",
+    "pattern_summary": {
+      "Decorator": 1
+    }
+  },
+  {
+    "file_path": "~/AutoPrompter/src/config_manager.py",
+    "language": "Python",
+    "patterns": [
+      {
+        "pattern_type": "Command",
+        "category": "Behavioral",
+        "confidence": 0.65,
+        "location": "~/AutoPrompter/src/config_manager.py",
+        "class_name": "TaskConfig",
+        "method_name": null,
+        "line_number": 108,
+        "evidence": [
+          "Class name suggests Command: TaskConfig"
+        ],
+        "related_classes": []
+      },
+      {
+        "pattern_type": "Decorator",
+        "category": "Structural",
+        "confidence": 0.3,
+        "location": "~/AutoPrompter/src/config_manager.py",
+        "class_name": "Config",
+        "method_name": "from_yaml",
+        "line_number": 150,
+        "evidence": [
+          "Method uses decorators: ['classmethod']"
+        ],
+        "related_classes": []
+      }
+    ],
+    "total_classes": 9,
+    "total_functions": 2,
+    "analysis_depth": "deep",
+    "pattern_summary": {
+      "Command": 1,
+      "Decorator": 1
+    }
+  },
+  {
+    "file_path": "~/AutoPrompter/src/dataset_generator.py",
+    "language": "Python",
+    "patterns": [
+      {
+        "pattern_type": "Decorator",
+        "category": "Structural",
+        "confidence": 0.3,
+        "location": "~/AutoPrompter/src/dataset_generator.py",
+        "class_name": "DatasetEntry",
+        "method_name": "from_dict",
+        "line_number": 31,
+        "evidence": [
+          "Method uses decorators: ['classmethod']"
+        ],
+        "related_classes": []
+      },
+      {
+        "pattern_type": "Decorator",
+        "category": "Structural",
+        "confidence": 0.3,
+        "location": "~/AutoPrompter/src/dataset_generator.py",
+        "class_name": "DatasetGenerator",
+        "method_name": "_fix_json",
+        "line_number": 47,
+        "evidence": [
+          "Method uses decorators: ['staticmethod']"
+        ],
+        "related_classes": []
+      }
+    ],
+    "total_classes": 2,
+    "total_functions": 0,
+    "analysis_depth": "deep",
+    "pattern_summary": {
+      "Decorator": 2
+    }
+  },
+  {
+    "file_path": "~/AutoPrompter/src/experiment_ledger.py",
+    "language": "Python",
+    "patterns": [
+      {
+        "pattern_type": "Decorator",
+        "category": "Structural",
+        "confidence": 0.3,
+        "location": "~/AutoPrompter/src/experiment_ledger.py",
+        "class_name": "ExperimentRecord",
+        "method_name": "from_dict",
+        "line_number": 56,
+        "evidence": [
+          "Method uses decorators: ['classmethod']"
+        ],
+        "related_classes": []
+      },
+      {
+        "pattern_type": "Builder",
+        "category": "Creational",
+        "confidence": 0.5,
+        "location": "~/AutoPrompter/src/experiment_ledger.py",
+        "class_name": "ExperimentLedger",
+        "method_name": null,
+        "line_number": 60,
+        "evidence": [
+          "Has 3 configuration methods"
+        ],
+        "related_classes": []
+      },
+      {
+        "pattern_type": "Observer",
+        "category": "Behavioral",
+        "confidence": 0.8999999999999999,
+        "location": "~/AutoPrompter/src/experiment_ledger.py",
+        "class_name": "ExperimentLedger",
+        "method_name": null,
+        "line_number": 60,
+        "evidence": [
+          "Attach method: add_prompt_embedding",
+          "Attach method: add_experiment",
+          "Attach method: add_record"
+        ],
+        "related_classes": []
+      }
+    ],
+    "total_classes": 2,
+    "total_functions": 0,
+    "analysis_depth": "deep",
+    "pattern_summary": {
+      "Decorator": 1,
+      "Builder": 1,
+      "Observer": 1
+    }
+  },
+  {
+    "file_path": "~/AutoPrompter/src/optimization_system.py",
+    "language": "Python",
+    "patterns": [
+      {
+        "pattern_type": "Command",
+        "category": "Behavioral",
+        "confidence": 0.7,
+        "location": "~/AutoPrompter/src/optimization_system.py",
+        "class_name": "PromptOptimizationSystem",
+        "method_name": null,
+        "line_number": 48,
+        "evidence": [
+          "Has execute method: run()",
+          "Encapsulates receiver/parameters"
+        ],
+        "related_classes": []
+      }
+    ],
+    "total_classes": 1,
+    "total_functions": 1,
+    "analysis_depth": "deep",
+    "pattern_summary": {
+      "Command": 1
+    }
+  },
+  {
+    "file_path": "~/AutoPrompter/src/robustness_tester.py",
+    "language": "Python",
+    "patterns": [
+      {
+        "pattern_type": "Observer",
+        "category": "Behavioral",
+        "confidence": 0.6,
+        "location": "~/AutoPrompter/src/robustness_tester.py",
+        "class_name": "RobustnessTester",
+        "method_name": null,
+        "line_number": 30,
+        "evidence": [
+          "Attach method: _add_typos",
+          "Attach method: _add_ambiguity"
+        ],
+        "related_classes": []
+      }
+    ],
+    "total_classes": 2,
+    "total_functions": 0,
+    "analysis_depth": "deep",
+    "pattern_summary": {
+      "Observer": 1
+    }
+  },
+  {
+    "file_path": "~/AutoPrompter/web_ui.py",
+    "language": "Python",
+    "patterns": [
+      {
+        "pattern_type": "Observer",
+        "category": "Behavioral",
+        "confidence": 0.65,
+        "location": "~/AutoPrompter/web_ui.py",
+        "class_name": "SSELogHandler",
+        "method_name": "emit",
+        "line_number": 98,
+        "evidence": [
+          "Observer method detected: emit"
+        ],
+        "related_classes": []
+      },
+      {
+        "pattern_type": "ChainOfResponsibility",
+        "category": "Behavioral",
+        "confidence": 0.6,
+        "location": "~/AutoPrompter/web_ui.py",
+        "class_name": "SSELogHandler",
+        "method_name": null,
+        "line_number": 93,
+        "evidence": [
+          "Class name suggests handler chain: SSELogHandler"
+        ],
+        "related_classes": []
+      }
+    ],
+    "total_classes": 2,
+    "total_functions": 20,
+    "analysis_depth": "deep",
+    "pattern_summary": {
+      "Observer": 1,
+      "ChainOfResponsibility": 1
+    }
+  }
+]

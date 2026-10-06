@@ -1,0 +1,373 @@
+{
+  "total_files": 2,
+  "categories": {
+    "changelog": [
+      "CHANGELOG.md"
+    ],
+    "overview": [
+      "README.md"
+    ]
+  },
+  "files": [
+    {
+      "path": "CHANGELOG.md",
+      "filename": "CHANGELOG.md",
+      "category": "changelog",
+      "size_bytes": 5439,
+      "title": "Changelog",
+      "structure": {
+        "title": "Changelog",
+        "headers": [
+          {
+            "level": 1,
+            "text": "Changelog",
+            "line": 1
+          },
+          {
+            "level": 2,
+            "text": "[Unreleased] - 2025-04-08",
+            "line": 5
+          },
+          {
+            "level": 3,
+            "text": "Added",
+            "line": 7
+          },
+          {
+            "level": 4,
+            "text": "Web UI Dashboard",
+            "line": 9
+          },
+          {
+            "level": 4,
+            "text": "Parallel Execution System",
+            "line": 27
+          },
+          {
+            "level": 4,
+            "text": "Robustness Testing Framework",
+            "line": 34
+          },
+          {
+            "level": 3,
+            "text": "Fixed",
+            "line": 43
+          },
+          {
+            "level": 4,
+            "text": "Optimization System Stability",
+            "line": 45
+          },
+          {
+            "level": 4,
+            "text": "Prompt Optimizer Robustness",
+            "line": 57
+          },
+          {
+            "level": 4,
+            "text": "Experiment Ledger",
+            "line": 68
+          },
+          {
+            "level": 3,
+            "text": "Changed",
+            "line": 75
+          },
+          {
+            "level": 3,
+            "text": "Technical Details",
+            "line": 89
+          },
+          {
+            "level": 4,
+            "text": "Files Added",
+            "line": 91
+          },
+          {
+            "level": 4,
+            "text": "Files Modified",
+            "line": 101
+          },
+          {
+            "level": 4,
+            "text": "Test Coverage",
+            "line": 107
+          },
+          {
+            "level": 2,
+            "text": "[1.0.0] - Initial Release",
+            "line": 114
+          },
+          {
+            "level": 3,
+            "text": "Features",
+            "line": 116
+          },
+          {
+            "level": 3,
+            "text": "Core Components",
+            "line": 126
+          }
+        ],
+        "code_blocks": [],
+        "tables": 0,
+        "images": 0,
+        "links": 0,
+        "word_count": 32,
+        "line_count": 136
+      },
+      "summary": "**Changelog**\nSections: [Unreleased] - 2025-04-08, Added, Fixed, Changed, Technical Details\nAll notable changes to AutoPrompter will be documented in this file.\n(32 words, 0 code blocks)",
+      "content": null,
+      "_enhanced": true,
+      "parsed_data": {
+        "tables": 0,
+        "cross_references": 0,
+        "code_blocks": 0,
+        "images": 0,
+        "quality_scores": {
+          "avg_code_quality": 0
+        }
+      }
+    },
+    {
+      "path": "README.md",
+      "filename": "README.md",
+      "category": "overview",
+      "size_bytes": 9676,
+      "title": "AutoPrompter: Autonomous Prompt Optimization System",
+      "structure": {
+        "title": "AutoPrompter: Autonomous Prompt Optimization System",
+        "headers": [
+          {
+            "level": 1,
+            "text": "AutoPrompter: Autonomous Prompt Optimization System",
+            "line": 1
+          },
+          {
+            "level": 2,
+            "text": "System Architecture",
+            "line": 11
+          },
+          {
+            "level": 3,
+            "text": "Core Components",
+            "line": 23
+          },
+          {
+            "level": 2,
+            "text": "Installation",
+            "line": 29
+          },
+          {
+            "level": 2,
+            "text": "Configuration",
+            "line": 53
+          },
+          {
+            "level": 3,
+            "text": "Supported Backends",
+            "line": 64
+          },
+          {
+            "level": 4,
+            "text": "OpenRouter Configuration (Default)",
+            "line": 73
+          },
+          {
+            "level": 4,
+            "text": "Ollama Configuration",
+            "line": 84
+          },
+          {
+            "level": 4,
+            "text": "llama.cpp Configuration",
+            "line": 96
+          },
+          {
+            "level": 4,
+            "text": "Claude Code CLI Configuration",
+            "line": 108
+          },
+          {
+            "level": 3,
+            "text": "Setting Up Local Backends",
+            "line": 126
+          },
+          {
+            "level": 4,
+            "text": "Ollama Setup",
+            "line": 128
+          },
+          {
+            "level": 4,
+            "text": "llama.cpp Setup",
+            "line": 141
+          },
+          {
+            "level": 4,
+            "text": "Auto-Detection",
+            "line": 151
+          },
+          {
+            "level": 2,
+            "text": "Usage",
+            "line": 165
+          },
+          {
+            "level": 3,
+            "text": "Command Line Interface",
+            "line": 167
+          },
+          {
+            "level": 3,
+            "text": "Web UI (New!)",
+            "line": 175
+          },
+          {
+            "level": 3,
+            "text": "Specific Task Examples",
+            "line": 193
+          },
+          {
+            "level": 3,
+            "text": "Using Local Backends",
+            "line": 210
+          },
+          {
+            "level": 3,
+            "text": "Command Line Overrides",
+            "line": 224
+          },
+          {
+            "level": 2,
+            "text": "Recent Enhancements",
+            "line": 232
+          },
+          {
+            "level": 3,
+            "text": "Robustness & Stability Improvements",
+            "line": 234
+          },
+          {
+            "level": 3,
+            "text": "Parallel Execution & Robustness Testing",
+            "line": 241
+          },
+          {
+            "level": 3,
+            "text": "Web UI (New)",
+            "line": 245
+          },
+          {
+            "level": 2,
+            "text": "License",
+            "line": 254
+          }
+        ],
+        "code_blocks": [
+          {
+            "language": "text",
+            "code": "*   The Target LLM (Qwen 3.5 9b) is tested against the current prompt using the generated dataset.\n*   Performance is measured using a defined metric (Accuracy, F1, Semantic Similarity, etc.).\n*   The Optimizer LLM analyzes failures and successes to generate a refined prompt."
+          },
+          {
+            "language": "bash",
+            "code": "    git clone https://github.com/gauravvij/AutoPrompter.git\n    cd AutoPrompter"
+          },
+          {
+            "language": "bash",
+            "code": "    python3 -m venv venv\n    source venv/bin/activate"
+          },
+          {
+            "language": "bash",
+            "code": "    pip install -r requirements.txt"
+          },
+          {
+            "language": "text",
+            "code": "Set the `OPENROUTER_API_KEY` environment variable or add it to `/root/.config/openrouter/config`.\n\n**Note:** API key is only required when using OpenRouter backend. Local backends (Ollama, llama.cpp) do not require API keys."
+          },
+          {
+            "language": "yaml",
+            "code": "optimizer_llm:\n  backend: \"openrouter\"\n  model: \"google/gemini-3.1-flash-lite-preview\"\n  api_base: \"https://openrouter.ai/api/v1\"\n  temperature: 0.7\n  max_tokens: 4096"
+          },
+          {
+            "language": "yaml",
+            "code": "optimizer_llm:\n  backend: \"ollama\"\n  model: \"llama3.2\"\n  host: \"http://localhost\"\n  port: 11434\n  temperature: 0.7\n  max_tokens: 4096"
+          },
+          {
+            "language": "yaml",
+            "code": "optimizer_llm:\n  backend: \"llama_cpp\"\n  model: \"llama-3.2-3b\"\n  host: \"http://localhost\"\n  port: 8080\n  temperature: 0.7\n  max_tokens: 4096"
+          },
+          {
+            "language": "yaml",
+            "code": "optimizer_llm:\n  backend: \"claude_cli\"\n  model: \"sonnet\"      # alias (sonnet, opus, haiku) or full model id\n  timeout: 300\ntarget_llm:\n  backend: \"claude_cli\"\n  model: \"haiku\""
+          },
+          {
+            "language": "bash",
+            "code": "   ollama pull llama3.2"
+          },
+          {
+            "language": "bash",
+            "code": "   ollama serve"
+          },
+          {
+            "language": "bash",
+            "code": "   ./llama-server -m llama-3.2-3b.Q4_K_M.gguf -c 4096 --host 0.0.0.0 --port 8080"
+          },
+          {
+            "language": "yaml",
+            "code": "optimizer_llm:\n  backend: \"auto\"\n  model: \"llama3.2\"\n  host: \"http://localhost\"\n  port: 11434"
+          },
+          {
+            "language": "bash",
+            "code": "python main.py --config config.yaml"
+          },
+          {
+            "language": "bash",
+            "code": "python web_ui.py"
+          },
+          {
+            "language": "bash",
+            "code": "  python main.py --config config_blogging.yaml"
+          },
+          {
+            "language": "bash",
+            "code": "  python main.py --config config_math.yaml"
+          },
+          {
+            "language": "bash",
+            "code": "  python main.py --config config_reasoning.yaml"
+          },
+          {
+            "language": "bash",
+            "code": "  python main.py --config config_ollama.yaml"
+          },
+          {
+            "language": "bash",
+            "code": "  python main.py --config config_llama_cpp.yaml"
+          },
+          {
+            "language": "bash",
+            "code": "python main.py --config config.yaml --max-iterations 50 --override experiment.batch_size=10"
+          }
+        ],
+        "tables": 0,
+        "images": 0,
+        "links": 0,
+        "word_count": 89,
+        "line_count": 269
+      },
+      "summary": "**AutoPrompter: Autonomous Prompt Optimization System**\nSections: System Architecture, Core Components, Installation, Configuration, Supported Backends\n<p align=\"center\"> <a href=\"https://heyneo.so\" target=\"_blank\"> <img src=\"https://img.shields.io/badge/Made%20by-NEO-ff3b30?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL...\n(89 words, 21 code blocks)",
+      "content": null,
+      "_enhanced": true,
+      "parsed_data": {
+        "tables": 0,
+        "cross_references": 1,
+        "code_blocks": 21,
+        "images": 0,
+        "quality_scores": {
+          "avg_code_quality": 7.238095238095238
+        }
+      }
+    }
+  ]
+}
