@@ -104,6 +104,8 @@ class ExperimentConfig:
     reuse_dataset: bool = False  # True: load the first batch_size entries of storage.dataset_file instead of regenerating
     acceptance: str = "always"  # always: every proposal replaces the prompt; val: kept only if it beats the current prompt on storage.val_file
     val_significance: bool = False  # with acceptance=val, also require a significant val improvement (t-test, bootstrap fallback)
+    hide_expected: bool = False  # True: the Optimizer never sees expected outputs (feedback and history)
+    label_guard: bool = False  # True: reject proposals that contain a train or val expected output
 
 
 @dataclass

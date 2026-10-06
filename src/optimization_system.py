@@ -23,6 +23,7 @@ from metrics import MetricsEvaluator, MetricDefinition
 from context_manager import ContextManager
 from prompt_optimizer import PromptOptimizer
 from robustness_tester import RobustnessTester, RobustnessResult
+from label_guard import guarded_labels, find_leaked_labels
 
 # Configure logging
 logging.basicConfig(
@@ -121,6 +122,12 @@ class PromptOptimizationSystem:
         self.val_initial: Optional[float] = None
         self.gate_stats: Dict[str, Any] = {'accepted': 0, 'rejected': 0, 'reasons': {}}
         self.test_scores: Dict[str, float] = {}
+
+        # Keeping labels away from the Optimizer
+        self.hide_expected = getattr(config.experiment, 'hide_expected', False)
+        self.label_guard = getattr(config.experiment, 'label_guard', False)
+        self.guard_labels: List[str] = []
+        self.guard_stats: Dict[str, int] = {}  # proposals dropped before testing, by reason
 
         # Statistical tracking for significance testing
         self.best_scores_history: List[float] = []
@@ -567,7 +574,8 @@ class PromptOptimizationSystem:
             for i, (idx, inp, exp, act, score) in enumerate(low_score_examples[:3]):  # Show first 3
                 feedback_parts.append(f"\n  Example {i+1} (Test Case #{idx+1}):")
                 feedback_parts.append(f"    Input: {inp[:100]}...")
-                feedback_parts.append(f"    Expected format: {exp[:150]}...")
+                if not self.hide_expected:
+                    feedback_parts.append(f"    Expected format: {exp[:150]}...")
                 feedback_parts.append(f"    Actual output: {act[:150] if act else '(EMPTY)'}...")
                 
                 # Get detailed feedback for this example
@@ -583,7 +591,7 @@ class PromptOptimizationSystem:
                 feedback_parts.append(f"    Input: {inp[:80]}...")
                 # Show what's missing
                 detailed = self.metrics_evaluator.get_feedback(act, exp)
-                if detailed.get('missing_key_terms'):
+                if detailed.get('missing_key_terms') and not self.hide_expected:
                     feedback_parts.append(f"    Missing key terms: {', '.join(detailed['missing_key_terms'][:5])}")
                 if detailed.get('token_coverage'):
                     feedback_parts.append(f"    Content coverage: {detailed['token_coverage']:.1%}")
@@ -663,6 +671,8 @@ class PromptOptimizationSystem:
                 'rejection_reasons': self.gate_stats['reasons'],
                 'target_reached': self.metric_def.is_target_reached(self.incumbent_val.mean_score),
             })
+        if self.guard_stats:
+            report['skipped_proposals'] = self.guard_stats
         if self.test_scores:
             report['test_initial'] = self.test_scores['initial']
             report['test_best'] = self.test_scores['best']
@@ -738,6 +748,9 @@ class PromptOptimizationSystem:
                 )
             ]
         }
+        if self.hide_expected:
+            for result in exp_dict['sample_results']:
+                del result['expected']
         exp_dict.update(extra)
         self.context_manager.add_experiment(exp_dict)
 
@@ -754,12 +767,17 @@ class PromptOptimizationSystem:
         )
         return self.ledger.is_duplicate_experiment(probe)
 
-    def _propose(self, experiment) -> Optional[str]:
-        """Ask the Optimizer for a new prompt, using the given experiment as feedback."""
+    def _propose(self, experiment, note: str = "") -> Optional[str]:
+        """Ask the Optimizer for a new prompt, using the given experiment as feedback.
+
+        note: an extra instruction appended to the feedback (e.g. why the last proposal was refused).
+        """
         context = self.context_manager.get_context_for_optimizer(
             self.current_prompt, experiment.mean_score
         )
         feedback_summary = self._build_feedback_summary(experiment)
+        if note:
+            feedback_summary += f"\n\n⛔ {note}"
         return self.prompt_optimizer.optimize(
             context,
             self.current_prompt,
@@ -768,24 +786,39 @@ class PromptOptimizationSystem:
             feedback_summary
         )
 
+    def _candidate_problem(self, prompt: str) -> Optional[Tuple[str, str]]:
+        """Why a proposal must not be tested, as (reason, note for the Optimizer), or None if it is fine."""
+        if self._is_known_prompt(prompt, self.dataset):
+            return ('duplicate', "Your last proposal was identical to a prompt that was already tested. "
+                                 "Propose a different prompt.")
+        if self.guard_labels:
+            leaked = find_leaked_labels(prompt, self.guard_labels)
+            if leaked:
+                logger.warning(f"Proposal contains {len(leaked)} expected answer(s) from the evaluation data")
+                return ('label_leak', "Your last proposal was refused because it contained specific answers "
+                                      "from the evaluation data. The prompt must explain how to find or form "
+                                      "an answer; it must never list answers.")
+        return None
+
     def _next_candidate(self) -> Tuple[Optional[str], bool]:
-        """Propose a prompt that has not been tested yet.
+        """Propose a prompt that passes the pre-test checks, asking once more if the first one fails.
 
         Returns (prompt, ok). prompt None means the Optimizer failed; ok False means
-        it only produced already-tested prompts and this iteration should be skipped.
+        both proposals were refused and this iteration should be skipped.
         """
-        candidate = self._propose(self.last_experiment)
-        if candidate is None:
-            return None, False
-        if self._is_known_prompt(candidate, self.dataset):
-            logger.warning("Duplicate experiment detected, generating new prompt...")
-            candidate = self._propose(self.last_experiment)
+        note = ""
+        for attempt in range(2):
+            candidate = self._propose(self.last_experiment, note)
             if candidate is None:
                 return None, False
-            if self._is_known_prompt(candidate, self.dataset):
-                logger.warning("Optimizer repeated an already-tested prompt, skipping this iteration")
-                return candidate, False
-        return candidate, True
+            problem = self._candidate_problem(candidate)
+            if problem is None:
+                return candidate, True
+            reason, note = problem
+            logger.warning(f"Proposal refused ({reason}), "
+                           f"{'asking for another one' if attempt == 0 else 'skipping this iteration'}")
+        self.guard_stats[reason] = self.guard_stats.get(reason, 0) + 1
+        return candidate, False
     
     def _decide_gated(self, experiment) -> bool:
         """Apply the val gate to a scored candidate and update state. Returns True to stop (target reached)."""
@@ -857,6 +890,12 @@ class PromptOptimizationSystem:
         if self.gated and not self.val_set:
             logger.error("experiment.acceptance=val needs a non-empty storage.val_file")
             return {'status': 'failed', 'reason': 'No val set'}
+        
+        if self.label_guard:
+            labels = [e.expected_output for e in self.dataset + self.val_set]
+            self.guard_labels = guarded_labels(labels, self.config.task.initial_prompt)
+            logger.info(f"Label guard on: {len(self.guard_labels)} of {len(set(labels))} distinct "
+                        f"expected outputs are guarded")
         
         # Use the full dataset for each experiment (batch_size = dataset size)
         # This ensures each experiment tests on all test cases
