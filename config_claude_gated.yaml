@@ -1,0 +1,56 @@
+# AutoPrompter configuration: Claude Code CLI backend with honest evaluation turned on.
+# See "Honest Evaluation" in README.md. Every key below that is not in config_claude.yaml is opt-in.
+# Build the three data files with:
+#   python3 scripts/split_dataset.py grounded.json --out-dir data/ --val 30 --test 30
+
+optimizer_llm:
+  backend: "claude_cli"
+  model: "opus"            # writes new prompts
+  timeout: 300
+
+target_llm:
+  backend: "claude_cli"
+  model: "haiku"           # runs the prompt under test
+  timeout: 120
+
+experiment:
+  max_iterations: 6        # new prompts proposed after the baseline
+  min_improvement: 0.01
+  batch_size: 20           # set to the number of entries in data/train.json
+  reuse_dataset: true      # use data/train.json; never let the Optimizer write the data
+  acceptance: "val"        # keep a prompt only if it beats the current one on data/val.json
+  val_significance: false
+  hide_expected: true      # the Optimizer never sees expected answers
+  label_guard: true        # refuse prompts that contain train or val answers
+  candidates_per_step: 4   # 4 proposals per iteration, best on train goes to the val check
+  demo_count: 3            # then try 3 train examples after the best prompt, kept only if val improves
+  demo_trials: 4
+  seed: 0
+
+task:
+  name: "skill_qa"
+  description: "Answer implementation questions about the skill using the reference material"
+  # Text between <<<KEEP>>> and <<<END KEEP>>> must survive every rewrite.
+  initial_prompt: |
+    Answer the question about the skill in a few words.
+    <<<KEEP>>>
+    ## When to Activate
+    (sections the metric does not test, kept as they are)
+    <<<END KEEP>>>
+  context_files: []        # e.g. ["../skills/my-skill/SKILL.md"]: given to the Target, names only to the Optimizer
+
+metric:
+  type: "strict_contains"  # whole-word match, no partial credit, refusals score 0
+  target_score: 0.95
+
+context:
+  max_experiments_in_context: 20
+  compression_threshold: 50
+
+storage:
+  ledger_file: "experiment_ledger_gated.json"
+  dataset_file: "data/train.json"
+  val_file: "data/val.json"
+  test_file: "data/test.json"
+  results_dir: "results_gated"
+  checkpoint_interval: 10
